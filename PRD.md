@@ -39,11 +39,12 @@ Hope Hub is a web-based Physical Education platform for students and teachers. I
 
 ## User Roles
 
-| Role | Access Level | Registration |
-|---|---|---|
-| `student` | Content consumption, self-tracking | Register with class code |
+| Role      | Access Level                                      | Registration                |
+| --------- | ------------------------------------------------- | --------------------------- |
+| `student` | Content consumption, self-tracking                | Register with class code    |
 | `teacher` | Class management, student monitoring, data export | Register without class code |
-| `admin` | Defined in DB enum but no dedicated UI currently | — |
+| `admin`   | Defined in DB enum but no dedicated UI currently  | —                           |
+
 
 ---
 
@@ -417,6 +418,7 @@ src/utilities/PhysicalFitnessTestList.js
 4. If all pass: UPDATE `physical_fitness_test` with PAR-Q data + `{ gender, category, isPARQFinished: true }`
 5. Navigate to first test: `/physical-fitness-test/test/0`
 6. PAR-Q data stored in context (`PhysicalFitnessDataProvider`) + `localStorage`
+**Missing:** Continue to previous progress when test in progress
 
 **Questions:**
 1. Heart condition?
@@ -442,6 +444,7 @@ src/utilities/PhysicalFitnessTestList.js
 1. Fetch `user_type` from `profile`
 2. Load `physicalFitnessData` from `localStorage`
 3. Check `quiz_progress` / `physical_fitness_test` DB — if `finishedTestIndex` includes current `testIndex` → show "already taken" error
+**Questions:** Why does it check quiz_progress?
 4. On test submit: save score to context + `localStorage` under test data
 5. On last test (index 9): save full test to `physical_fitness_test` DB (pre or post based on existing data)
 6. Teacher: full test access in demo mode
@@ -603,7 +606,7 @@ src/services/cleanStudentData.js
 - Click class card → navigate `/dashboard/view-class/:classCode`
 - Upload / change profile picture
 - Logout (mobile only)
-
+**Question:** Why Logous is mobile only? verify
 **Logic:**
 1. Fetch all classes: SELECT `class_code`, `class_name`, `class_color` FROM `teacher_class_code` WHERE `uuid = userID`
 2. Create class: INSERT into `teacher_class_code`
