@@ -1,0 +1,66 @@
+.aside:hover {
+  width: 18vw;
+  transition: all;
+  transition-duration: 500ms;
+}
+
+.aside {
+  transition: all;
+  transition-duration: 500ms;
+}
+
+.aside button {
+  transform: translateX(30%);
+  transition: all;
+  transition-duration: 300ms;
+}
+
+.aside:hover button {
+  transform: translateX(10%);
+}
+
+.aside .highlight {
+  transform: translateX(-30%);
+  transition: all;
+  transition-duration: 300ms;
+}
+
+.aside button:hover .highlight {
+  opacity: 0.3 !important;
+}
+
+.aside:hover .highlight {
+  transform: translateX(-10%);
+}
+
+.aside button > p {
+  transform: translateX(100%);
+  transition: all;
+  transition-duration: 300ms;
+  transition-timing-function: ease-out;
+  opacity: 0;
+  text-wrap: nowrap;
+}
+
+.aside:hover button>p {
+  display: block;
+  width: 80%;
+  transform: translateX(0%);
+  opacity: 1;
+}
+
+@media (min-width:1024px) and (max-width:1100px) {
+  .aside:hover {
+    width: 25vw;
+    transition: all;
+    transition-duration: 500ms;
+  }
+}
+
+@media (min-width:1111px) and (max-width:1300px) {
+  .aside:hover {
+    width: 23vw;
+    transition: all;
+    transition-duration: 500ms;
+  }
+}
