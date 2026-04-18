@@ -676,3 +676,668 @@ if (extractedQuizState.remainingTime === 0)   // ❌ crashes if null
 ---
 
 *All findings verified against `experiences.md` entries. Every file in `src/` was read.*
+
+---
+
+# Round 3 Audit — Standards Compliance
+**Date**: April 18, 2026 | **Standards**: `next-standards.md` + `Supabase Standards.md`
+**Scope**: `db/schema.sql`, `supabase/functions/`, `src/client/supabase.js`, full `src/`
+
+---
+
+## Summary
+
+This round audits against two external standards documents. Previous rounds used `experiences.md`. New findings only — no re-listing of prior issues.
+
+---
+
+## 🔴 CRITICAL — RLS Policy Holes
+
+### S-1. `quiz_progress` INSERT — Any User Can Fabricate Scores for Anyone
+**File**: `db/schema.sql:490`
+**Standard ref**: *Supabase 3.1 — No policy = no tenant isolation*
+
+```sql
+CREATE POLICY "Enable insert for authenticated users only" ON public.quiz_progress
+  FOR INSERT TO authenticated WITH CHECK (true);
+```
+
+`WITH CHECK (true)` means any authenticated user can insert a `quiz_progress` row with **any `user_id`**. A student can inject leaderboard entries for other students or fabricate a perfect score under a rival's UUID. Previous finding F-3 (client-side score computation) compounds this — not only can scores be manipulated in the browser, they can also be inserted directly into the DB as any user.
+
+**Fix**: `WITH CHECK ((SELECT auth.uid()) = user_id)`
+
+---
+
+### S-2. `quiz_progress` UPDATE — Any User Can Overwrite Any Student's Score
+**File**: `db/schema.sql:608`
+**Standard ref**: *Supabase 3.2 — USING controls which rows can be affected*
+
+```sql
+CREATE POLICY "Policy with table joins" ON public.quiz_progress
+  FOR UPDATE USING (true);
+```
+
+`USING (true)` means every authenticated user can UPDATE every row in `quiz_progress`. Any student can zero out another student's score or set their own points to `32767` (smallint max). The leaderboard is fully manipulable.
+
+**Fix**: `USING ((SELECT auth.uid()) = user_id) WITH CHECK ((SELECT auth.uid()) = user_id)`
+
+---
+
+### S-3. `quiz` UPDATE — Any User Can Modify Quiz Questions
+**File**: `db/schema.sql:602`
+
+```sql
+CREATE POLICY "Policy with table joins" ON public.quiz
+  FOR UPDATE USING (true);
+```
+
+Any authenticated user — including students — can UPDATE the `questions` JSON column of any quiz. A student can change the correct answers to their own before taking the quiz, or corrupt the quiz for everyone.
+
+**Fix**: Remove this policy entirely, or scope to an admin/teacher role only. Students should never be able to UPDATE quiz content.
+
+---
+
+### S-4. `teacher_class_code` INSERT — Any User Can Create Teacher Class Codes
+**File**: `db/schema.sql:504`
+
+```sql
+CREATE POLICY "Enable insert for authenticated users only" ON public.teacher_class_code
+  FOR INSERT TO authenticated WITH CHECK (true);
+```
+
+Any authenticated user (including students) can INSERT into `teacher_class_code` — the table that grants teacher-level dashboard access. A student creates a class code → navigates to `/dashboard/view-class/:theirCode` → sees all other students' PII via `retrieve_students_by_class`.
+
+This directly bypasses the F-5 finding (self-service teacher registration). Even if the register form is fixed, this RLS hole allows the same escalation path via direct DB calls.
+
+**Fix**: `WITH CHECK ((SELECT auth.uid()) = uuid AND EXISTS (SELECT 1 FROM profile WHERE uuid = auth.uid() AND user_type = 'teacher'))` — or enforce teacher-only access via a restrictive policy.
+
+---
+
+### S-5. `retrieve_students_by_class` RPC — No Auth Check (MT-1/MT-2 Confirmed)
+**File**: `db/schema.sql:108-148`
+**Standard ref**: *Supabase 3.5 — Anti-pattern: missing tenant scope on reads*
+
+```sql
+CREATE FUNCTION public.retrieve_students_by_class(class_code_input text)
+-- ...
+WHERE scc.class_code = class_code_input;
+-- No auth.uid() check. No teacher ownership check. Zero.
+```
+
+MT-1 and MT-2 from the previous audit are **now confirmed**. The function takes `class_code_input` and returns all matching student rows with no verification that the caller owns or teaches that class. Any authenticated user who knows (or guesses) a class code gets every student's full name, email, quiz scores, and fitness test data.
+
+**Fix** (pick one):
+1. Add `AND EXISTS (SELECT 1 FROM teacher_class_code WHERE class_code = class_code_input AND uuid = auth.uid())` to the WHERE clause
+2. Add a `security definer` function in `private` schema that performs the check before delegating
+
+---
+
+### S-6. All Tables Readable by Anonymous Users
+**File**: `db/schema.sql:508-553`
+**Standard ref**: *Supabase 3.2 — Always specify TO role; 3.7 — use anon key for client, never expose private data*
+
+```sql
+CREATE POLICY "Enable read access for all users" ON public.profile FOR SELECT USING (true);
+CREATE POLICY "Enable read access for all users" ON public.quiz_progress FOR SELECT USING (true);
+CREATE POLICY "Enable read access for all users" ON public.student_class_code FOR SELECT USING (true);
+CREATE POLICY "Enable read access for all users" ON public.lecture_progress FOR SELECT USING (true);
+CREATE POLICY "Enable read access for all users" ON public.physical_fitness_test FOR SELECT USING (true);
+CREATE POLICY "Enable read access for all users" ON public.teacher_class_code FOR SELECT USING (true);
+```
+
+None of these policies have a `TO` clause. Per standard, omitting `TO` means the policy runs for **all roles including `anon`**. An unauthenticated visitor can query `profile` directly via the REST API and get every user's `full_name`, `email`, and `user_type`. Same for quiz scores, fitness test results, and class membership.
+
+**Fix**: Add `TO authenticated` to every SELECT policy. For profile/quiz_progress, additionally scope to the user's own data unless a teacher read is explicitly needed.
+
+---
+
+## 🔴 CRITICAL — Edge Function Issues
+
+### S-7. Registration Edge Function Still Stores Plaintext Password
+**File**: `supabase/functions/registration/index.ts:91`
+**Standard ref**: *Supabase 5.2 — JWT/session management*
+
+```typescript
+data: {
+  fullName: trimmedName,
+  userType: userType,
+  classCode: null,
+  lectureProgress: lectureProgress,
+  password: trimmedPassword   // ❌ plaintext password in auth metadata
+}
+```
+
+First flagged in Round 1 (`Register.jsx:111`). The fix was applied to the client — but the Edge Function that actually handles registration **still stores the plaintext password**. The security hole is still live. Supabase stores `user_metadata` in `auth.users`, visible to service role queries, database exports, and Supabase's own admin UI.
+
+**Fix**: Delete `password: trimmedPassword` from the metadata object.
+
+---
+
+### S-8. Raw Supabase Errors Returned to Client from Edge Functions
+**Files**: `supabase/functions/login/index.ts:89`, `supabase/functions/registration/index.ts:108`
+**Standard ref**: *never expose raw exception messages to clients*
+
+```typescript
+// login/index.ts
+message: String(err)   // Supabase AuthApiError: "Invalid login credentials"
+
+// registration/index.ts
+message: err.message   // Supabase AuthApiError: "User already registered"
+```
+
+Both edge functions return the raw Supabase error string to the client. Supabase error messages include internal details like constraint names and auth state. "User already registered" is a user enumeration vector — attackers can probe which emails have accounts.
+
+**Fix**: Map known error codes to safe generic messages. Log the full error server-side only.
+
+---
+
+### S-9. Rate Limiter Uses Global Identifier — One User Blocks All Users
+**Files**: `supabase/functions/login/index.ts:46`, `supabase/functions/registration/index.ts:46`
+**Standard ref**: *Supabase 2.8 — Advisory lock anti-patterns; rate limiting must be per-identifier*
+
+```typescript
+const identifier = "api";   // same in both functions
+const { success } = await ratelimit.limit(identifier);
+```
+
+Both the login and registration functions use the literal string `"api"` as the rate limit key. This is a **global** bucket shared by every user, every IP. The sliding window is `10 requests / 10 seconds` globally — not per user or per IP.
+
+Consequences:
+1. A single automated client making 11 login attempts blocks **all** other users from logging in for 10 seconds
+2. A DDoS of just 10 req/s against the login endpoint takes the auth system offline for all users
+3. Legitimate high-traffic periods (end of school day, all students logging in) trigger the limit for everyone
+
+**Fix**: Use `req.headers.get("x-forwarded-for") || "unknown"` or a hashed email as the identifier for per-user/per-IP rate limiting.
+
+---
+
+## ⚠️ MAJOR — Schema Design Violations
+
+### S-10. Missing Indexes on Foreign Key Columns
+**File**: `db/schema.sql`
+**Standard ref**: *Supabase 1.4 — Always index foreign keys*
+
+```sql
+-- These FKs exist but have NO indexes:
+student_class_code.uuid  → profile.uuid
+teacher_class_code.uuid  → profile.uuid
+quiz_progress.user_id    → profile.uuid
+quiz_progress.quiz_id    → quiz.id
+```
+
+The standard is explicit: "PostgreSQL does NOT auto-index foreign keys." Every join or lookup on these columns does a full table scan. `quiz_progress` is the highest-churn table (one row per question per student) and both its FK columns are unindexed.
+
+**Fix**:
+```sql
+CREATE INDEX idx_student_class_code_uuid ON student_class_code (uuid);
+CREATE INDEX idx_teacher_class_code_uuid ON teacher_class_code (uuid);
+CREATE INDEX idx_quiz_progress_user_id ON quiz_progress (user_id);
+CREATE INDEX idx_quiz_progress_quiz_id ON quiz_progress (quiz_id);
+```
+
+---
+
+### S-11. `json` Used Instead of `jsonb` on 4 Columns
+**File**: `db/schema.sql:246,208,266,271`
+**Standard ref**: *Supabase 1.3 — JSON data: always use `jsonb`, never `json`*
+
+```sql
+quiz.questions               json   -- ❌
+physical_fitness_test.post_physical_fitness_test   json  -- ❌
+quiz_progress.questions_answered  json  -- ❌
+quiz_progress.questions_shuffled  json  -- ❌
+```
+
+`json` stores raw text and re-parses on every read. `jsonb` is binary, indexable, and ~2x faster for any query that touches these columns. The `quiz.questions` column is read on every quiz load.
+
+**Fix**: `ALTER TABLE quiz ALTER COLUMN questions TYPE jsonb USING questions::jsonb;` (and same for the other 3 columns). These are non-locking operations in PostgreSQL 15+.
+
+---
+
+### S-12. `profile` UPDATE Policy Uses JWT Email Instead of `auth.uid()`
+**File**: `db/schema.sql:567`
+**Standard ref**: *Supabase 3.5 — Using `raw_user_meta_data` or JWT claims for authorization is a security hole*
+
+```sql
+CREATE POLICY "Enable update for users based on email" ON public.profile
+  FOR UPDATE USING ((auth.jwt() ->> 'email') = email)
+  WITH CHECK ((auth.jwt() ->> 'email') = email);
+```
+
+The standard flags JWT claims as fragile for authorization: email can be changed, JWTs can be replayed after email updates, and the `email` field in the JWT may lag until token refresh. `auth.uid()` is the canonical, stable identity claim.
+
+**Fix**: `USING ((SELECT auth.uid()) = uuid) WITH CHECK ((SELECT auth.uid()) = uuid)`
+
+---
+
+### S-13. RLS Policies Missing `TO authenticated` Role Scoping
+**File**: `db/schema.sql` — all SELECT policies
+**Standard ref**: *Supabase 3.4 — Always specify target role (99%+ perf improvement for anon queries)*
+
+Zero SELECT policies specify `TO authenticated`. Per the standard, this causes the policy to evaluate for both `authenticated` and `anon` roles on every request. Benchmarked improvement of specifying `TO authenticated`: **170ms → <0.1ms** for anon queries.
+
+**Fix**: Add `TO authenticated` to all policies. For truly public data (if any), use `TO anon, authenticated`.
+
+---
+
+### S-14. No Supabase Migrations Workflow
+**File**: `supabase/` — no `migrations/` directory
+**Standard ref**: *Supabase 4.1 — Migration workflow; 4.2 — Always test migrations locally first*
+
+The schema lives in `db/schema.sql` as a raw `pg_dump`. This is a snapshot, not a migration history. There is no way to:
+- Apply changes incrementally to production without manual SQL
+- Track what has changed since deployment
+- Roll back a bad schema change
+- Have CI/CD automatically apply migrations
+
+**Fix**: `supabase migration new initial_schema` → paste the schema → commit. All future schema changes via `supabase migration new <name>`. The `db/schema.sql` dump can stay as reference documentation.
+
+---
+
+## 🟡 MODERATE — Next Standards Gaps
+
+### S-15. No TypeScript — Entire Stack Violates Language Standard
+**Standard ref**: *next-standards.md — Language: TypeScript (strict)*
+
+The entire project uses `.jsx` and `.js`. Zero `.tsx` or `.ts` files in `src/`. The standard mandates TypeScript strict mode with `noUnusedLocals`, `noUnusedParameters`, and a `types/` directory for domain interfaces.
+
+This isn't a fixable lint rule — it's a full migration. That said, it's the root cause of many issues in this codebase: the null dereferences (S-F2), the silent error discards, and the service/component type confusion would all be caught at compile time with TypeScript.
+
+**Fix**: Migrate incrementally. Start with `allowJs: true` in `tsconfig.json` and rename files one module at a time.
+
+---
+
+### S-16. No TanStack Query — Entire Data Layer Violates Fetching Standard
+**Standard ref**: *next-standards.md — "Use TanStack Query for all server data. Never use raw `fetch()` inside `useEffect`."*
+
+Every data-fetching hook (`useDashboardData.js`, `useLectureProgress.jsx`, `usePhysicalFitnessData.jsx`, `useFetch.jsx`) uses `useEffect` + direct Supabase calls. This gives the app:
+- No request deduplication
+- No cache — every navigation refetches everything
+- No background refetch / stale-while-revalidate
+- No automatic retry on network failure
+- No loading/error state standardization
+
+**Fix**: Wrap Supabase calls in `useQuery` / `useMutation` hooks from `@tanstack/react-query`. Add a `QueryClientProvider` at the app root.
+
+---
+
+### S-17. No Zustand — Client State Scattered Across Providers and useState
+**Standard ref**: *next-standards.md — State: Zustand (domain stores)*
+
+Shared auth state (`userId`) is re-fetched by each component via `useUserId()`. Quiz state flows through four nested Context providers (`QuizContext`, `QuestionsContext`, `RemainingTimeContext`, `IdentificationRefContext`). There is no single source of truth for auth session, profile, or quiz state.
+
+The standard is explicit: ephemeral UI state belongs in `useState`, but cross-component shared state belongs in Zustand domain stores. The current nested Context approach creates provider hell and makes state debugging opaque.
+
+---
+
+### S-18. File Naming Violates kebab-case Standard Throughout
+**Standard ref**: *next-standards.md — Files: `kebab-case.ts` / `kebab-case.tsx`*
+
+The standard requires `kebab-case` for all filenames. The project uses `PascalCase` for every component file:
+
+```
+StudentDashboard.jsx  → student-dashboard.jsx
+ViewClass.jsx         → view-class.jsx
+QuizData.js           → quiz-data.js
+LectureProvider.jsx   → lecture-provider.jsx
+```
+
+This affects ~90+ files. While a purely cosmetic issue in isolation, mixing `PascalCase` files with `@/components/auth/FormInput` imports versus `@/components/ui/button` (`ui/` already uses kebab) creates an inconsistent import surface.
+
+---
+
+### S-19. `useEffect` for Data Fetching Not Defensive Against `userID` Null Race
+**Standard ref**: *next-standards.md — State Reset on Prop Change, Derived State*
+
+`useDashboardData.js` and all similar hooks gate on `if (!userID) return` inside the effect, but `userID` starts as `null` (from `useUserId`). On first render, effects fire with `null`, bail out, then fire again when `userID` resolves. This is the classic "derived state in useEffect" anti-pattern — the standard recommends the `key` prop pattern or TanStack Query's `enabled` option to avoid this double-trigger.
+
+---
+
+## 🔵 MINOR — Schema Conventions
+
+### S-20. FK Columns Named `uuid` Instead of `user_id`
+**Standard ref**: *Supabase 1.1 — Foreign keys: singular table name + `_id` suffix*
+
+Most tables use `uuid` as the column that references `profile.uuid`. Standard convention is `profile_id` or `user_id`. The current naming is ambiguous: `uuid` is also a PostgreSQL type, and `student_class_code.uuid` reads as if it's the row's own UUID rather than a foreign key.
+
+---
+
+### S-21. No `updated_at` Trigger on Any Table
+**Standard ref**: *Supabase 1.5 — Standard table template includes auto-update `updated_at` trigger*
+
+`quiz_progress`, `profile`, and `physical_fitness_test` all have no `updated_at` column or trigger. The standard template explicitly includes this for every table. Without it, there's no way to know when a row was last modified for debugging, auditing, or cache invalidation.
+
+---
+
+### S-22. Schema Not Idempotent — No `IF NOT EXISTS` Guards
+**Standard ref**: *Supabase 2.7 — Idempotent Migration Patterns*
+
+The `db/schema.sql` uses bare `CREATE TABLE`, `CREATE FUNCTION`, `CREATE POLICY` — no `IF NOT EXISTS` guards. Attempting to re-run it against a database that already has the schema fails immediately. The standard requires all DDL to be idempotent.
+
+---
+
+## Updated Scoring (Round 3 Additions Only)
+
+| Category | New Points | Notes |
+|----------|-----------|-------|
+| Critical | −18 | S-1 quiz_progress insert, S-2 quiz_progress update, S-3 quiz update, S-4 teacher_class_code insert, S-5 RPC confirmed, S-6 anon read, S-7 password still in edge fn, S-8 raw errors, S-9 global rate limit |
+| Major | −8 | S-10 missing FK indexes, S-11 json vs jsonb, S-12 profile policy, S-13 missing TO clause, S-14 no migrations |
+| Moderate | −6 | S-15 no TypeScript, S-16 no TanStack Query, S-17 no Zustand, S-18 file naming, S-19 useEffect race |
+| Minor | −3 | S-20 FK naming, S-21 no updated_at, S-22 non-idempotent schema |
+| **Round 3 total** | **−35** | |
+| **Previous score** | **46/100** | |
+| **Adjusted score** | **~30/100** | Many prior "passes" were incomplete without DB/standards context |
+
+---
+
+## New Deployment Blockers (Round 3)
+
+- [ ] **[S-2] Fix `quiz_progress` UPDATE policy — `USING (true)` lets any user overwrite anyone's scores**
+- [ ] **[S-3] Fix `quiz` UPDATE policy — `USING (true)` lets any user modify quiz questions**
+- [ ] **[S-1] Fix `quiz_progress` INSERT policy — `WITH CHECK (true)` lets any user fabricate scores for any user_id**
+- [ ] **[S-4] Fix `teacher_class_code` INSERT policy — students can create class codes**
+- [ ] **[S-5] Add auth.uid() check to `retrieve_students_by_class` RPC**
+- [ ] **[S-6] Add `TO authenticated` to all SELECT policies — currently readable by anonymous users**
+- [ ] **[S-7] Remove plaintext password from registration edge function metadata**
+- [ ] **[S-9] Fix rate limiter identifier to be per-IP or per-email, not global `"api"`**
+
+---
+
+*Round 3 sources: `db/schema.sql`, `supabase/functions/login/index.ts`, `supabase/functions/registration/index.ts`, `src/client/supabase.js`, `next-standards.md`, `Supabase Standards.md`*
+
+---
+
+# Round 4 Audit — Full Codebase Re-Read (Standards Pass)
+**Date**: April 18, 2026 | **Method**: 2 subagents — pages/hooks/providers + components/services/utilities
+**Standards**: `next-standards.md` + `Supabase Standards.md`
+
+---
+
+## 🔴 CRITICAL
+
+### R4-1. `setSession()` Not Awaited — Password Reset Race Condition
+**File**: `src/pages/Auth/ChangePassword.jsx:22-29`
+**Standard**: Supabase Standards §5 — proper async session management
+
+```js
+useEffect(() => {
+  if (type === 'recovery' && access_token) {
+    supabase.auth.setSession({   // ❌ not awaited
+      access_token,
+      refresh_token: searchParams.get('refresh_token') || '',
+    });
+  }
+}, [searchParams]);
+```
+
+`setSession()` is fire-and-forget. The component renders the password change form immediately — before the session is established. A fast user who submits before the async resolves will get an auth error with no clear explanation.
+
+**Fix**: Make the effect async, await `setSession()`, set a loading flag while it resolves, and block form submission until session is confirmed.
+
+---
+
+### R4-2. Two Different Hardcoded Production URLs in Auth
+**Files**: `src/pages/Auth/Register.jsx:105`, `src/pages/Auth/ForgotPassword.jsx:46`
+**Standard**: Next-standards §Hardcoded Production URL (already flagged for Register, now confirmed ForgotPassword too — different domain)
+
+```js
+// Register.jsx
+emailRedirectTo: 'https://hope-hub-fitness.vercel.app/auth/account-verification'
+
+// ForgotPassword.jsx
+redirectTo: 'https://hope-hub-dcvm.vercel.app/auth/change-password'
+```
+
+Two different Vercel project domains. One is stale or wrong. Password reset emails redirect to the wrong deployment — users can't complete the reset flow from the correct app. Also breaks local development for both flows.
+
+**Fix**: `import.meta.env.VITE_APP_URL + '/auth/...'` in both files. Add `VITE_APP_URL` to `.env.example`.
+
+---
+
+### R4-3. Supabase Calls Embedded in Export Utilities — Duplicated
+**Files**: `src/utilities/exportStudentCSV.js:12-23`, `src/utilities/exportStudentExcel.js:12-23`
+**Standard**: Next-standards §Services Layer — "Components never call `fetch()` directly"; same principle applies to utilities
+
+`getDetailedPFTData()` is defined identically in both files — a full Supabase query for `physical_fitness_test` embedded inside export utilities. Utilities should be pure functions. DB queries belong in services.
+
+**Fix**: Move `getDetailedPFTData()` to a shared service (`services/physical-fitness-service.js`), import in both export files. Eliminates the duplication and correctly separates concerns.
+
+---
+
+### R4-4. Format Functions Triplicated Across Export Files
+**Files**: `src/utilities/exportStudentCSV.js:28-82`, `src/utilities/exportStudentExcel.js:28-82`
+**Standard**: next-standards §Dead Code Policy / DRY
+
+`formatBMI()`, `formatPFTTest()`, `formatStepTest()` — three functions, identical implementations, copy-pasted between both files. Any change to the format logic requires editing two places and risks divergence.
+
+**Fix**: Extract to `src/utilities/format-pft.js`, import in both.
+
+---
+
+## ⚠️ MAJOR
+
+### R4-5. BMRCalculator and BodyFatCalculator — 18-20 `useState` Calls Each
+**Files**: `src/pages/HealthCalculators/BMRCalculator.jsx`, `src/pages/HealthCalculators/BodyFatPercentageCalculator.jsx`
+**Standard**: next-standards §useState Limits — "5+ related `useState` calls with related state, consolidate with `useReducer`"
+
+- `BMRCalculator`: `gender`, `age`, `heightUnit`, `weightUnit`, `height`, `weight`, `formulaVariant`, `bodyFat`, `bmrResult`, `maintainingCalories`, `activityLevel`, `weightGain`, `weightLoss`, and more — ~20 calls
+- `BodyFatCalculator`: `gender`, `age`, `height`, `heightUnit`, `weight`, `weightUnit`, `neck`, `waist`, `hips`, `neckUnit`, `waistUnit`, `hipsUnit`, `results`, `bodyFatPercentageCategory`, etc. — ~18 calls
+
+All state is form inputs + results for a single calculation concern. The standard's threshold is 5+.
+
+**Fix**: One `useReducer` per calculator with `initialState` and an `UPDATE_FIELD` action.
+
+---
+
+### R4-6. Debug `console.log` Left in Production Components
+**Files**: `src/pages/PhysicalActivityReadinessQuestionnaire.jsx:107`, `src/pages/HealthCalculators/HeartRateCalculator.jsx:92`
+**Standard**: next-standards §No Sensitive Data in Logs (also: general code quality)
+
+```js
+console.log(currentAnswers);      // PAR-Q — fires on every answer change
+console.log({ thrResult });       // HeartRateCalculator — fires on every calculation
+```
+
+**Fix**: Delete both lines.
+
+---
+
+### R4-7. Array Index as Key on Filtered/Mutable Lists
+**Files**: `src/pages/LecturesIntroduction.jsx:116,161`, `src/pages/Dashboard/ViewClass.jsx:375`, `src/pages/QuizDashboard.jsx:67`
+**Standard**: next-standards §Accessibility — Array Keys
+
+```js
+// LecturesIntroduction — filtered list, order changes with filter selection
+mergedLessons.filter(...).map((lesson, idx) => (
+  <LectureIntroduction key={idx} ... />   // ❌
+))
+
+// QuizDashboard — filtered by quiz type
+quizzes.filter(...).map((quiz, idx) => (
+  <QuizCard key={idx} ... />              // ❌
+))
+```
+
+**Fix**: Use stable IDs — `key={lesson.key}`, `key={quiz.id}`.
+
+---
+
+### R4-8. `getStudentDataByClassCode` — Silent Error, Caller Can't Distinguish Empty vs Failed
+**File**: `src/services/getStudentDataByClassCode.js`
+**Standard**: next-standards §Services Layer — "Services throw on non-OK responses"
+
+```js
+export async function getStudentsByClassCode(classCode) {
+  const { data } = await supabase.rpc('retrieve_students_by_class', {
+    class_code_input: classCode,
+  });
+  return data ?? [];   // ❌ error swallowed — empty array on failure looks like empty class
+}
+```
+
+If the RPC fails (network error, auth error, permission denied), the caller gets `[]` back — indistinguishable from a class with zero students. Teacher sees a blank table and has no idea why.
+
+**Fix**: Destructure `error`, throw or return `{ data, error }` so the caller can surface it.
+
+---
+
+### R4-9. Missing Client-Side Filter on `JoinClass` Lookup
+**File**: `src/components/dashboard/JoinClass.jsx:21-25`
+**Standard**: Supabase Standards §3.4 — "Always add client-side filters (94% improvement)"
+
+```js
+const { count } = await supabase
+  .from('teacher_class_code')
+  .select('*', { count: 'exact', head: true })
+  .eq('class_code', code);   // relies entirely on RLS + DB scan for existence check
+```
+
+No format validation before the query — any string hits the DB. Also no `.limit(1)` — the DB counts all matching rows when one is sufficient.
+
+**Fix**: Validate class code format client-side first (e.g. length/character check). Add `.limit(1)` to the query.
+
+---
+
+### R4-10. Orphaned String Statements in `PhysicalFitnessTestSummary`
+**File**: `src/pages/PhysicalFitnessTestSummary.jsx:50,63,70,77`
+
+```js
+if (studentCheckError || !studentExists) {
+  ('this 1');    // ❌ bare string — does nothing, leftover from debugging
+  setIsBadRequest(true);
+}
+```
+
+Four of these across the file. They're not `console.log` calls — they're standalone string expressions that silently evaluate to nothing. No runtime error, no output. Pure dead development noise.
+
+**Fix**: Delete all four.
+
+---
+
+## 🟡 MODERATE
+
+### R4-11. Supabase Calls in `AddClassCode` Component Directly
+**File**: `src/components/dashboard/AddClassCode.jsx:135-143`
+**Standard**: next-standards §Services Layer — "Components never call fetch() directly"
+
+Component calls `supabase.from('teacher_class_code').insert(...)` inline. Should go through a service function.
+
+---
+
+### R4-12. `onProfileChange.js` — Direct Storage Call, No Error Returned
+**File**: `src/utilities/onProfileChange.js:14-20`
+**Standard**: next-standards §Services Layer + Error Handling
+
+`supabase.storage.from().upload()` called directly in a utility with no error propagation to the caller. If the upload fails, nothing happens — no feedback to user, no log.
+
+---
+
+### R4-13. Missing Accessibility — Search Input Has No Label
+**File**: `src/components/dashboard/Search.jsx:16-20`
+**Standard**: next-standards §Accessibility — Labels
+
+Search input has placeholder text only. No `<label>`, no `aria-label`, no `htmlFor` association. Screen readers have no way to announce what the input is for.
+
+**Fix**: `<input aria-label="Search students" ... />` or a visually-hidden `<label>`.
+
+---
+
+### R4-14. Clickable `div` Missing `role`, `tabIndex`, `onKeyDown` in ClassCode
+**File**: `src/components/dashboard/ClassCode.jsx:10-14`
+**Standard**: next-standards §Accessibility — Interactive Elements
+
+`div` with `onClick` but no `role="button"`, no `tabIndex={0}`, no keyboard handler. Keyboard-only users can't activate it.
+
+**Fix**: Replace with `<button>` or add the three required attributes.
+
+---
+
+### R4-15. Clickable Logo `div` in Sidebar Missing Keyboard Support
+**File**: `src/components/Sidebar.jsx:131`
+**Standard**: next-standards §Accessibility — Interactive Elements
+
+Same pattern — `onClick` on a `div` that navigates to `/home`. No keyboard access.
+
+**Fix**: Wrap in `<button>` or add `role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && navigate('/home')}`.
+
+---
+
+### R4-16. `PhysicalFitnessTest` Component — 5+ Related `useState` Calls
+**File**: `src/components/physical-fitness-test/PhysicalFitnessTest.jsx:52-68`
+**Standard**: next-standards §useState Limits
+
+`currentTime`, `category`, test result fields, `showAlert`, `alertMessage`, `timerTime` — all tightly coupled to one test session concern.
+
+**Fix**: `useReducer` with a `testState` object.
+
+---
+
+### R4-17. Relative Import in `Sidebar.jsx`
+**File**: `src/components/Sidebar.jsx`
+**Standard**: next-standards §Path Aliases — "Always use `@/` for imports from `src/`"
+
+Uses `../assets/...` relative path. Rest of the codebase uses `@/assets/...`.
+
+**Fix**: `import SidebarLogo from '@/assets/logos/hopehub_logo_v1.png'`
+
+---
+
+### R4-18. Missing `useEffect` Dependencies in `ChangePassword`
+**File**: `src/pages/Auth/ChangePassword.jsx:29`
+**Standard**: next-standards §Missing React Hook Dependencies (already a category in audit)
+
+`useEffect` depends on `[searchParams]` but reads `type` and `access_token` derived from `searchParams` inside the effect. Should list all consumed variables as dependencies.
+
+---
+
+## 🔵 MINOR
+
+### R4-19. `shuffleQuizQuestionsAndChoices` — Unexported Dead Function
+**File**: `src/utilities/QuizData.js`
+**Standard**: next-standards §Dead Code Policy
+
+Defined but neither exported nor referenced outside its own file. If it's a private helper, it should stay — but it's not called from within the file either. Dead code.
+
+**Fix**: Delete or move inside `fetchQuizQuestions()` if it was meant to be called there.
+
+---
+
+### R4-20. Empty `catch` in `AudioPlayer`
+**File**: `src/components/quiz/AudioPlayer.jsx:15-16`
+**Standard**: next-standards / experiences §Always Log Full Exception Objects
+
+```js
+audio.play().catch(() => {});   // ❌ silence
+```
+
+Audio play errors (browser autoplay policy, missing file) silently swallowed. User hears nothing, knows nothing.
+
+**Fix**: At minimum `console.error('audio play failed', err)`. Ideally set a state flag to show a play button.
+
+---
+
+### R4-21. `CustomButton` — `isDisabled` Set But Never Reset
+**File**: `src/components/quiz/CustomButton.jsx:5`
+**Standard**: next-standards §useState Limits / component correctness
+
+`isDisabled` flips to `true` on click and never resets. Button becomes permanently unusable after one click per mount. Likely intended to prevent double-submission but has no recovery path.
+
+**Fix**: Reset after async action completes, or manage the disabled state at the parent level where the async lifecycle is known.
+
+---
+
+## Round 4 Scoring
+
+| Category | Points | Notes |
+|----------|--------|-------|
+| Critical | −12 | R4-1 session race, R4-2 wrong URLs, R4-3 DB in utils, R4-4 triplicated format fns |
+| Major | −14 | R4-5 useState overload x2, R4-6 debug logs, R4-7 index keys, R4-8 silent error, R4-9 no filter, R4-10 orphaned strings |
+| Moderate | −8 | R4-11 through R4-18 |
+| Minor | −3 | R4-19 through R4-21 |
+| **Round 4 total** | **−37** | |
+| **Previous score** | **~30/100** | |
+| **Adjusted score** | **~20/100** | |
+
+---
+
+*Round 4 sources: all files in `src/pages/`, `src/hooks/`, `src/providers/`, `src/components/`, `src/services/`, `src/utilities/`, `src/lib/`, `package.json` — read in full via 2 parallel subagents.*
