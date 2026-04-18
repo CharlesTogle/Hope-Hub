@@ -1,91 +1,166 @@
-# Hope Hub Database
+# Hope Hub
 
-This folder contains the PostgreSQL schema for the Hope Hub platform described in [../PRD.md](../PRD.md). It represents the Supabase database layer that supports authentication-driven profile setup, lecture progress tracking, quizzes, physical fitness testing, and teacher class management.
+Hope Hub is a web-based Physical Education platform for students and teachers. It packages PE lectures, quizzes, physical fitness testing, workout guidance, health calculators, and class tracking into a single app backed by Supabase.
 
-## Scope
+This README is derived from [PRD.md](./PRD.md) and aligned with the current repository structure.
 
-The product is a web-based Physical Education platform with two active application roles:
+## Overview
 
-- `student`: consumes lessons, takes quizzes, records physical fitness data, and joins a class with a class code
-- `teacher`: creates and manages classes, monitors students, and exports student progress
+Hope Hub is built around two active roles:
 
-An `admin` enum value exists in the schema, but the PRD does not describe a dedicated admin UI yet.
+- `student`: studies lecture content, takes quizzes, completes physical fitness tests, joins a class, and tracks progress
+- `teacher`: creates classes, monitors student activity, reviews results, and exports class data
 
-## Files
+The app is organized around these modules:
 
-- [schema.sql](./schema.sql): PostgreSQL dump for the current Hope Hub schema
-- [../PRD.md](../PRD.md): product and app-flow reference used to derive this README
+- Authentication: registration, login, email verification, password reset, and password change
+- Lectures: lesson browsing, PDF/video delivery, progress tracking, and quiz unlock flow
+- Quizzes: shuffled questions, timers, resumable progress, scoring, and leaderboard
+- Physical Fitness Test: PAR-Q screening, pre-test and post-test flows, and summaries
+- Health Calculators: BMI, BMR, IBW, water intake, body fat, and heart rate tools
+- Workout Zone: categorized exercise videos with instructions and references
+- Dashboard: student self-tracking and teacher class management with export support
+- About: static organization and contact page
 
-## Database Model
+## Product Flow
 
-### Enum types
+At a high level, the app works like this:
 
-- `public.user_type`: `admin`, `student`, `teacher`
-- `public.quiz_status`: `All`, `Done`, `Pending`, `Locked`
+1. A user registers and verifies their account through Supabase Auth.
+2. Hope Hub creates the user profile and baseline progress records in Supabase.
+3. Students consume lectures, unlock quizzes, and record physical fitness data.
+4. Teachers manage classes and review student performance by class code.
 
-### Core tables
+The detailed product behavior, route map, and module breakdown live in [PRD.md](./PRD.md).
 
-- `profile`: one row per authenticated user; stores `uuid`, `full_name`, `email`, and `user_type`
-- `lecture_progress`: one row per user; stores lecture completion state in `jsonb`
-- `physical_fitness_test`: one row per user; stores `pre_physical_fitness_test` and `post_physical_fitness_test`
-- `quiz`: quiz definitions, metadata, and `questions` JSON
-- `quiz_progress`: per-user quiz state and completion data
-- `student_class_code`: student-to-class assignment
-- `teacher_class_code`: teacher-owned classes with `class_code`, `class_name`, and `class_color`
+## Tech Stack
 
-### Relationships
+- Frontend: React + Vite
+- Routing: `react-router-dom`
+- Styling: Tailwind CSS
+- UI primitives: Radix UI, shadcn/ui, Sonner
+- Backend: Supabase Auth, Postgres, Storage, RPC, Edge Functions
+- Charts and export: Recharts, `xlsx`
+- Deployment target: Vercel
 
-- `profile.uuid` is the parent key for `lecture_progress`, `physical_fitness_test`, `quiz_progress.user_id`, `student_class_code.uuid`, and `teacher_class_code.uuid`
-- `quiz_progress.quiz_id` references `quiz.id`
-- `physical_fitness_test.uuid` is unique, enforcing one fitness record per user
-- `lecture_progress.uuid` is the primary key, enforcing one lecture-progress record per user
+## Key Capabilities
 
-## RPC Functions
+- Role-based experience for students and teachers
+- Lecture completion tracking tied to quiz availability
+- Quiz resume state, timed scoring, and leaderboard display
+- Physical fitness pre-test and post-test recording
+- Teacher-owned class codes and class-level student views
+- Excel export for teacher reporting
+- Profile picture upload through Supabase Storage
+- Client-side health calculators and workout reference content
 
-The schema includes two application-facing Postgres functions:
+## Project Structure
 
-- `register_user(...)`: creates the initial records for a newly verified user across `profile`, `lecture_progress`, `physical_fitness_test`, and the appropriate class-code table
-- `retrieve_students_by_class(class_code_input)`: returns an aggregated teacher view of students in a class, including profile data, lecture progress, physical fitness results, and quiz progress
-
-## How It Supports The App
-
-Based on the PRD, the database is responsible for:
-
-- creating user records after email verification
-- persisting lecture progress and quiz unlock/completion state
-- storing quiz definitions and per-student quiz attempts
-- recording pre-test and post-test physical fitness data
-- linking students to teacher-managed classes via class codes
-- providing teacher dashboards with class-level student summaries through RPC
-
-## Security
-
-Row Level Security is enabled on all application tables in `schema.sql`.
-
-The current dump includes policies for:
-
-- self-service insert and update paths tied to `auth.uid()`
-- profile updates tied to the authenticated JWT email
-- broad read access on several tables
-
-Because this is a dump, policy intent should be reviewed in Supabase before production use, especially the tables with unrestricted `SELECT` or permissive `UPDATE` behavior.
-
-## Applying The Schema
-
-If you want to load this schema into a PostgreSQL or Supabase-backed database, apply `schema.sql` with your normal database workflow. Examples:
-
-```bash
-psql "$DATABASE_URL" -f schema.sql
+```text
+.
+├── PRD.md
+├── db/
+│   └── schema.sql
+├── public/
+│   ├── covers/
+│   └── videos/
+├── src/
+│   ├── assets/
+│   ├── client/
+│   ├── components/
+│   ├── hooks/
+│   ├── pages/
+│   ├── providers/
+│   ├── services/
+│   ├── styles/
+│   └── utilities/
+├── supabase/
+│   ├── config.toml
+│   └── functions/
+└── vercel.json
 ```
 
-or through Supabase SQL Editor by pasting the file contents.
+## Local Development
 
-## Product Alignment Notes
+### Requirements
 
-- The PRD describes the frontend stack as React 18 + Vite, Supabase, Tailwind CSS, React Router v6, and Framer Motion.
-- This folder only covers the database portion of that stack.
-- The schema already contains the main entities and RPC endpoints referenced in the PRD's Supabase integration section.
+- Node.js 18+
+- A package manager: `pnpm` or `npm`
+- A Supabase project, local or hosted
+
+### Install
+
+Using `pnpm`:
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Using `npm`:
+
+```bash
+npm install
+npm run dev
+```
+
+The Vite dev server is exposed with `--host`.
+
+### Available Scripts
+
+- `dev`: start the Vite development server
+- `build`: create a production build
+- `lint`: run ESLint
+- `preview`: preview the production build locally
+
+## Environment Variables
+
+Create a local `.env` file with the frontend Supabase credentials:
+
+```bash
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+Optional:
+
+```bash
+VITE_YOUTUBE_API_KEY=your_youtube_api_key
+```
+
+`VITE_YOUTUBE_API_KEY` exists in [src/client/youtube.js](./src/client/youtube.js), but it is not part of the main app bootstrap path today.
+
+## Supabase Notes
+
+The repo includes multiple Supabase-related pieces:
+
+- [db/schema.sql](./db/schema.sql): current database schema dump
+- [supabase/config.toml](./supabase/config.toml): local Supabase CLI configuration
+- [supabase/functions/login/index.ts](./supabase/functions/login/index.ts): login edge function source
+- [supabase/functions/registration/index.ts](./supabase/functions/registration/index.ts): registration edge function source
+
+Current application flows rely primarily on the browser Supabase client in [src/client/supabase.js](./src/client/supabase.js) and database RPCs described in the PRD:
+
+- `register_user(...)`
+- `retrieve_students_by_class(...)`
+
+This repo currently contains a schema dump, not an ordered migration set.
+
+## Deployment
+
+The app is configured for Vercel. [vercel.json](./vercel.json) includes:
+
+- SPA rewrites so client-side routes resolve correctly
+- security headers
+- a CSP that allows Supabase connections and YouTube embeds
+
+## Important References
+
+- Product behavior and route map: [PRD.md](./PRD.md)
+- Database layer: [db/schema.sql](./db/schema.sql)
+- App routes and wrappers: [src/App.jsx](./src/App.jsx)
+- Supabase client: [src/client/supabase.js](./src/client/supabase.js)
 
 ## Current State
 
-This folder currently contains a schema dump, not a migration set. If the project moves toward iterative database delivery, the next step would be to split `schema.sql` into ordered migrations and add seed data for quizzes and initial app content.
+The product brief in [PRD.md](./PRD.md) describes the intended platform clearly, while the repository reflects the current implementation. Where they differ, this README favors the repository for setup details and the PRD for product scope.
