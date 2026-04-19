@@ -135,15 +135,6 @@ export default function AccountVerification () {
     const userId = user.id;
     const email = user.email;
 
-    if (user.id !== userId) {
-      localStorage.removeItem('userData');
-      setIsBadRequest(true);
-      setTimeout(() => {
-        navigate('auth/register');
-      }, 1000);
-      setIsLoading(false);
-      return;
-    }
     const { error: rpcError } = await supabase.rpc('register_user', {
       p_user_id: userId,
       p_full_name: fullName,
