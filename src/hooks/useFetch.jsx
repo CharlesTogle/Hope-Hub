@@ -6,22 +6,33 @@ const useFetch = (url) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     const fetchData = async () => {
       try {
-        const response = await fetch(url);
+        const response = await fetch(url, { signal: controller.signal });
         if (!response.ok) {
           throw new Error(`Error: ${response.status}`);
         }
         const result = await response.json();
         setData(result);
       } catch (err) {
-        setError(err.message);
+        if (err.name !== 'AbortError') {
+          setError(err.message);
+        }
       } finally {
+        clearTimeout(timeoutId);
         setLoading(false);
       }
     };
 
     fetchData();
+
+    return () => {
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
   }, [url]);
 
   return { data, loading, error };
