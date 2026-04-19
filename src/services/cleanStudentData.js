@@ -1,29 +1,3 @@
-const sampleData = [
-  {
-    email: 'charles3939togle@gmail.com',
-    full_name: 'TestPerson1',
-    uuid: '',
-    lecture_progress: [
-      [
-        { key: 1, title: 'Personal Safety Protocol', status: 'Incomplete' },
-        { key: 2, title: 'Physiological Indicators', status: 'Incomplete' },
-        { key: 3, title: 'The FITT Principle', status: 'Incomplete' },
-      ],
-    ],
-  },
-  {
-    email: 'ctogle.a12345617@umak.edu.ph',
-    full_name: 'TestPerson2',
-    lecture_progress: [
-      [
-        { key: 1, title: 'Personal Safety Protocol', status: 'Incomplete' },
-        { key: 2, title: 'Physiological Indicators', status: 'Incomplete' },
-        { key: 3, title: 'The FITT Principle', status: 'Done' },
-      ],
-    ],
-  },
-];
-
 export const cleanStudentData = studentData => {
   const cleanedData = [];
   studentData.forEach(data => {
