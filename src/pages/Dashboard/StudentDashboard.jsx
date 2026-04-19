@@ -298,9 +298,10 @@ export default function StudentDashboard () {
     return <Loading />;
   }
   const handleLogout = async () => {
-    supabase.auth.signOut().then(navigate('/auth/login'));
+    await supabase.auth.signOut();
     localStorage.removeItem('lectureProgress');
     localStorage.removeItem('physicalFitnessData');
+    navigate('/auth/login');
   };
   return (
     <section className='student-dashboard parent-container'>
