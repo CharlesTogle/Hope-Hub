@@ -2,7 +2,7 @@ import Banner from '@/components/dashboard/Banner';
 import Statistics from '@/components/dashboard/Statistics';
 import supabase from '@/client/supabase';
 import { useUserId } from '@/hooks/useUserId';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import JoinClass from '@/components/dashboard/JoinClass';
 import ProfileSidebar from '@/components/dashboard/ProfileSidebar';
@@ -55,7 +55,7 @@ export default function StudentDashboard () {
     total: Object.values(sampleProgress).reduce((acc, value) => acc + value, 0),
   };
 
-  const getQuizProgress = async () => {
+  const getQuizProgress = useCallback(async () => {
     if (!userID) {
       setIsLoading(true);
       return;
@@ -90,9 +90,9 @@ export default function StudentDashboard () {
       pending,
       total: quizCount,
     });
-  };
+  }, [userID]);
 
-  const getQuizData = async () => {
+  const getQuizData = useCallback(async () => {
     if (!userID || quizCount === 0) {
       setIsLoading(true);
       return;
@@ -136,9 +136,9 @@ export default function StudentDashboard () {
     setQuizData(completeQuizData);
     setQuizLoading(false);
     setIsLoading(false);
-  };
+  }, [userID, quizCount]);
 
-  const getLectureProgress = async () => {
+  const getLectureProgress = useCallback(async () => {
     if (!userID) {
       setIsLoading(true);
       return;
@@ -170,9 +170,9 @@ export default function StudentDashboard () {
       pending,
       total: lectures.length,
     });
-  };
+  }, [userID]);
 
-  const getClassCode = async () => {
+  const getClassCode = useCallback(async () => {
     if (!userID) {
       setIsLoading(true);
       return;
@@ -191,22 +191,22 @@ export default function StudentDashboard () {
     else {
       setClassCode(classCode);
     }
-  };
+  }, [userID]);
 
   useEffect(() => {
     getClassCode();
-  }, [userID]);
+  }, [userID, getClassCode]);
 
   useEffect(() => {
     getLectureProgress();
-  }, [userID]);
+  }, [userID, getLectureProgress]);
 
   useEffect(() => {
     getQuizProgress();
-  }, [userID]);
+  }, [userID, getQuizProgress]);
   useEffect(() => {
     getQuizData();
-  }, [userID, quizCount]);
+  }, [userID, quizCount, getQuizData]);
 
   useEffect(() => {
     isPreTestFinished().then(setPreTestFinished);

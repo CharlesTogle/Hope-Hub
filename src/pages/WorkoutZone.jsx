@@ -13,17 +13,17 @@ import { References } from '@/utilities/WorkoutZoneVideos';
 import { useRef, useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Citation from '@/components/Citations';
+const combinedVideos = [
+  ...WarmUpVideo,
+  ...UpperBodyVideos,
+  ...LowerBodyVideos,
+];
+
 export default function WorkoutZone () {
   const [videoDetails, setVideoDetails] = useState({});
   const parentContainerRef = useRef();
   const navigate = useNavigate();
   const { videoUrl } = useParams();
-
-  const combinedVideos = [
-    ...WarmUpVideo,
-    ...UpperBodyVideos,
-    ...LowerBodyVideos,
-  ];
 
   useEffect(() => {
     if (videoUrl) {

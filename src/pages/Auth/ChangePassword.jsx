@@ -26,7 +26,7 @@ export default function ChangePassword () {
         refresh_token: searchParams.get('refresh_token') || '',
       });
     }
-  }, [searchParams]);
+  }, [searchParams, type, access_token]);
 
   const handlePasswordChange = value => {
     setPassword(value);
