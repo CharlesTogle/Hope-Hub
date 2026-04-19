@@ -218,6 +218,7 @@ function App() {
             path="health-calculators"
             element={<HealthCalculatorWrapper />}
           >
+            <Route index element={<HealthCalculator />} />
             <Route path="bmi" element={<BMICalculator />} />
             <Route path="bmr" element={<BMRCalculator />} />
             <Route path="ibw" element={<IBWCalculator />} />
