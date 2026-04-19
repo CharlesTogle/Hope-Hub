@@ -165,30 +165,19 @@ export default function ViewClass () {
 
     // Apply lecture sub-filter if in Lecture mode
     if (activeFilter === 'Lecture' && lectureSubFilter !== 'all') {
+      const lessonKeys = student => Object.keys(student).filter(k => k.startsWith('Lesson'));
       if (lectureSubFilter === 'done') {
-        baseData = defaultStudentData.filter(student => {
-          return (
-            student.Lesson1 === 'Done' &&
-            student.Lesson2 === 'Done' &&
-            student.Lesson3 === 'Done'
-          );
-        });
+        baseData = defaultStudentData.filter(student =>
+          lessonKeys(student).every(k => student[k] === 'Done'),
+        );
       } else if (lectureSubFilter === 'pending') {
-        baseData = defaultStudentData.filter(student => {
-          return (
-            student.Lesson1 === 'Pending' ||
-            student.Lesson2 === 'Pending' ||
-            student.Lesson3 === 'Pending'
-          );
-        });
+        baseData = defaultStudentData.filter(student =>
+          lessonKeys(student).some(k => student[k] === 'Pending'),
+        );
       } else if (lectureSubFilter === 'incomplete') {
-        baseData = defaultStudentData.filter(student => {
-          return (
-            student.Lesson1 === 'Incomplete' ||
-            student.Lesson2 === 'Incomplete' ||
-            student.Lesson3 === 'Incomplete'
-          );
-        });
+        baseData = defaultStudentData.filter(student =>
+          lessonKeys(student).some(k => student[k] === 'Incomplete'),
+        );
       }
     }
     // Apply search filter
@@ -225,38 +214,27 @@ export default function ViewClass () {
     setLectureSubFilter(filter);
     setSearchTerm(''); // Clear search when changing sub-filters
 
+    const lessonKeys = student => Object.keys(student).filter(k => k.startsWith('Lesson'));
     if (filter === 'all') {
       setActiveStudentData(defaultStudentData);
     } else if (filter === 'done') {
-      // Filter students who have completed all lessons
-      const filteredData = defaultStudentData.filter(student => {
-        return (
-          student.Lesson1 === 'Done' &&
-          student.Lesson2 === 'Done' &&
-          student.Lesson3 === 'Done'
-        );
-      });
-      setActiveStudentData(filteredData);
+      setActiveStudentData(
+        defaultStudentData.filter(student =>
+          lessonKeys(student).every(k => student[k] === 'Done'),
+        ),
+      );
     } else if (filter === 'pending') {
-      // Filter students who have at least one pending lesson
-      const filteredData = defaultStudentData.filter(student => {
-        return (
-          student.Lesson1 === 'Pending' ||
-          student.Lesson2 === 'Pending' ||
-          student.Lesson3 === 'Pending'
-        );
-      });
-      setActiveStudentData(filteredData);
+      setActiveStudentData(
+        defaultStudentData.filter(student =>
+          lessonKeys(student).some(k => student[k] === 'Pending'),
+        ),
+      );
     } else if (filter === 'incomplete') {
-      // Filter students who have at least one incomplete lesson
-      const filteredData = defaultStudentData.filter(student => {
-        return (
-          student.Lesson1 === 'Incomplete' ||
-          student.Lesson2 === 'Incomplete' ||
-          student.Lesson3 === 'Incomplete'
-        );
-      });
-      setActiveStudentData(filteredData);
+      setActiveStudentData(
+        defaultStudentData.filter(student =>
+          lessonKeys(student).some(k => student[k] === 'Incomplete'),
+        ),
+      );
     }
   };
 
