@@ -19,7 +19,6 @@ export default function useRateLimiter ({
     }
 
     const timeDiff = now - lastAttemptTime.current;
-    console.log(now, lastAttemptTime.current);
 
     // Reset count if cooldown period has passed
     if (timeDiff > cooldownMs) {
