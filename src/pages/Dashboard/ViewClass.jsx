@@ -148,7 +148,6 @@ export default function ViewClass () {
       setIsLoading(true);
       const allStudentData = await getStudentsByClassCode(classCode, userId);
       const cleanedStudentData = cleanStudentData(allStudentData);
-      console.log('all student data:', allStudentData);
       setActiveStudentData(cleanedStudentData);
       setDefaultStudentData(cleanedStudentData);
     } catch (error) {
