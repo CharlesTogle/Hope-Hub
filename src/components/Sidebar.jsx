@@ -104,10 +104,6 @@ export default function Sidebar ({ isOpen, onClose, setShowMenu }) {
     setIsWide(prev => !prev);
   };
 
-  const handleTransitionEnd = () => {
-    if (!isOpen && isMobile) setShouldRender(false);
-  };
-
   return (
     <aside
       id='sidebar'
