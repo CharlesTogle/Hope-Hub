@@ -426,6 +426,10 @@ async function fetchLeaderboard(quizId) {
     .order('points', { ascending: false })
     .limit(5);
 
+  if (error || !data) {
+    return [];
+  }
+
   const currentUser = await getCurrentUser();
   const leaderboard = data.map((user, index) => {
     return {
@@ -435,10 +439,6 @@ async function fetchLeaderboard(quizId) {
       isCurrentUser: user.user_id === currentUser.id,
     };
   });
-
-  if (error) {
-    return;
-  }
 
   return leaderboard;
 }
