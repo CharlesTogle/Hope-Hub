@@ -232,7 +232,7 @@ export const getTDEE = (
       break;
 
     default:
-      throw new Error(`Unknown formula variant: ${formulaVariant}`);
+      throw new Error(`Unknown activity type: ${activityType}`);
   }
 
   const caloriesByActivity = {};
@@ -445,7 +445,6 @@ export const getBodyFatPercentage = (
       break;
     default:
       throw new Error("Gender must be 'male' or 'female'.");
-      break;
   }
 
   return {

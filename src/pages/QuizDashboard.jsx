@@ -5,7 +5,6 @@ import { fetchQuizzes, extractQuizDetails } from '@/utilities/QuizData';
 import { motion, AnimatePresence } from 'motion/react';
 import Loading from '@/components/Loading';
 import Footer from '@/components/Footer';
-import { useUserId } from '@/hooks/useUserId';
 import { toast } from 'sonner';
 import { getCurrentUser } from '@/utilities/QuizData';
 import supabase from '@/client/supabase';
@@ -16,8 +15,6 @@ export default function QuizDashboard() {
   const [userType, setUserType] = useState('student');
   const [activeFilter, setActiveFilter] = useState('All');
   const filters = ['All', 'Done', 'Pending', 'Locked'];
-
-  const userId = useUserId();
 
   useEffect(() => {
     async function fetchAndSetQuizzes() {
