@@ -7,7 +7,7 @@ export const useLectureProgress = () => {
   const context = useContext(LectureProgressContext);
 
   if (!context) {
-    throw new Error('usePhysicalFitnessData must be used within a provider');
+    throw new Error('useLectureProgress must be used within a LectureProgressProvider');
   }
   return context;
 };
