@@ -108,7 +108,6 @@ export default function Register () {
           userType: userType,
           classCode: null,
           lectureProgress: LectureProgress(),
-          password: trimmedPassword,
         },
       },
     });
