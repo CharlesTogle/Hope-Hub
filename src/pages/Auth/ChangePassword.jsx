@@ -62,7 +62,8 @@ export default function ChangePassword () {
     });
 
     if (error) {
-      setErrorMessage(error.message);
+      console.error('ChangePassword failed', { error });
+      setErrorMessage('Failed to update password. Please try again.');
     } else {
       let counter = 3;
       const countdown = setInterval(() => {

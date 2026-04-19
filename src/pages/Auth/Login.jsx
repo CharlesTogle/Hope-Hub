@@ -65,7 +65,8 @@ export default function Login () {
       });
 
       if (error) {
-        setErrorMessage(error.message);
+        console.error('Login failed', { error });
+        setErrorMessage('Invalid email or password. Please try again.');
       } else {
         // Store remember me preference for future sessions
         localStorage.setItem('rememberMe', rememberMe.toString());

@@ -90,7 +90,8 @@ export default function AccountVerification () {
       });
 
       if (sessionError) {
-        setErrorMessage('Error setting session: ' + sessionError.message);
+        console.error('AccountVerification setSession failed', { sessionError });
+        setErrorMessage('Verification failed. Please try registering again.');
         setIsLoading(false);
         return;
       }
@@ -153,7 +154,8 @@ export default function AccountVerification () {
     });
 
     if (rpcError) {
-      setErrorMessage('Error during registration: ' + rpcError.message);
+      console.error('AccountVerification register_user RPC failed', { rpcError });
+      setErrorMessage('Registration failed. Please try registering again.');
       setIsLoading(false);
       setTimeout(() => {
         supabase.auth.signOut();

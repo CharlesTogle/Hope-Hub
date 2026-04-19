@@ -39,7 +39,8 @@ export default function PhysicalActivityReadinessQuestionnaire () {
       .update({ pre_physical_fitness_test: updatedData })
       .eq('uuid', userId);
     if (updateError) {
-      setErrorMessage('Error saving test data: ' + updateError.message);
+      console.error('PAR-Q navigateTeacher update failed', { userId, updateError });
+      setErrorMessage('Failed to save test data. Please try again.');
       setIsError(true);
       return;
     }
@@ -128,7 +129,8 @@ export default function PhysicalActivityReadinessQuestionnaire () {
       let newTest = true;
       let testIndeces = [];
       if (fetchError) {
-        setErrorMessage('Error fetching test record: ' + fetchError.message);
+        console.error('PAR-Q fetchError', { userId, fetchError });
+      setErrorMessage('Failed to load test record. Please try again.');
         setIsError(true);
         return;
       }
@@ -166,7 +168,8 @@ export default function PhysicalActivityReadinessQuestionnaire () {
         .update({ [testType]: updatedData })
         .eq('uuid', userId);
       if (updateError) {
-        setErrorMessage('Error saving test data: ' + updateError.message);
+        console.error('PAR-Q handleSubmit update failed', { userId, updateError });
+        setErrorMessage('Failed to save test data. Please try again.');
         setIsError(true);
         return;
       }
