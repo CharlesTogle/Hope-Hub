@@ -114,7 +114,6 @@ export default function Sidebar ({ isOpen, onClose, setShowMenu }) {
       transition-all duration-400
       ${isMobile ? (isOpen ? 'translate-x-0' : '-translate-x-full w-0!') : ''}
       `}
-      onTransitionEnd={handleTransitionEnd}
       onMouseEnter={() => handleOnMouseEnter()}
       onMouseLeave={() => handleOnMouseEnter()}
     >
