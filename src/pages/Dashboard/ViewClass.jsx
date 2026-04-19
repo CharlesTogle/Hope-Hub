@@ -146,7 +146,7 @@ export default function ViewClass () {
   const getStudentData = async () => {
     try {
       setIsLoading(true);
-      const allStudentData = await getStudentsByClassCode(classCode, userId);
+      const allStudentData = await getStudentsByClassCode(classCode);
       const cleanedStudentData = cleanStudentData(allStudentData);
       setActiveStudentData(cleanedStudentData);
       setDefaultStudentData(cleanedStudentData);
