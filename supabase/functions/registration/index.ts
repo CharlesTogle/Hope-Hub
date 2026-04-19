@@ -88,7 +88,6 @@ Deno.serve(async (req)=>{
           userType: userType,
           classCode: null,
           lectureProgress: lectureProgress,
-          password: trimmedPassword
         }
       }
     });
