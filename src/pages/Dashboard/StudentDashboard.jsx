@@ -34,6 +34,7 @@ export default function StudentDashboard () {
   const [classCode, setClassCode] = useState(null);
   const [tempClassCode, setTempClassCode] = useState('');
   const [isJoiningClass, setIsJoiningClass] = useState(false);
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
   const [quizData, setQuizData] = useState([]);
   const [quizCount, setQuizCount] = useState(0);
   const navigate = useNavigate();
@@ -255,11 +256,17 @@ export default function StudentDashboard () {
   };
 
   const handleLeaveClass = async () => {
+    if (!confirmingLeave) {
+      setConfirmingLeave(true);
+      return;
+    }
+    setConfirmingLeave(false);
     const { error: leaveClassError } = await supabase
       .from('student_class_code')
       .update({ class_code: null })
       .eq('uuid', userID);
     if (leaveClassError) {
+      console.error('handleLeaveClass failed', { userID, leaveClassError });
       return;
     }
     setClassCode(null);
@@ -336,6 +343,7 @@ export default function StudentDashboard () {
             classCode={classCode}
             onClassLeave={handleLeaveClass}
             onClassJoinOpen={() => setIsJoiningClass(true)}
+            confirmingLeave={confirmingLeave}
           ></Banner>
           <div id='statistics' className='grid grid-cols-2 gap-5'>
             <div id='lectures'>

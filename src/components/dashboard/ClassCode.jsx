@@ -5,6 +5,7 @@ export default function ClassCode ({
   name,
   classColor = 'FFF',
   onRemove = () => {},
+  confirmingRemove = false,
 }) {
   const navigate = useNavigate();
   return (
@@ -20,8 +21,9 @@ export default function ClassCode ({
         }}
         className='absolute top-0 right-5 text-2xl font-bold cursor-pointer'
         style={{ letterSpacing: '-0.2em' }}
+        title={confirmingRemove ? 'Click again to confirm delete' : 'Remove class'}
       >
-        ---
+        {confirmingRemove ? '?' : '---'}
       </button>
       <div className='p-3 font-bold font-content'>
         <p>{name}</p>

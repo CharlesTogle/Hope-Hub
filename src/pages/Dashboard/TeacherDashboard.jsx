@@ -27,6 +27,7 @@ export default function TeacherDashboard () {
   );
   const [classCodes, setClassCodes] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [confirmingRemove, setConfirmingRemove] = useState(null);
   const memoizedFile = useMemo(
     () => profilePictureFile,
     [profilePictureFile?.name, profilePictureFile?.size],
@@ -69,6 +70,11 @@ export default function TeacherDashboard () {
     setShowAddClassModal(false);
   };
   const handleRemoveClass = async classCode => {
+    if (confirmingRemove !== classCode) {
+      setConfirmingRemove(classCode);
+      return;
+    }
+    setConfirmingRemove(null);
     try {
       const { data, error } = await supabase
         .from('teacher_class_code')
@@ -78,6 +84,7 @@ export default function TeacherDashboard () {
         .select();
 
       if (error) {
+        console.error('handleRemoveClass failed', { classCode, error });
         return;
       }
 
@@ -88,7 +95,9 @@ export default function TeacherDashboard () {
       setClassCodes(prevCodes =>
         prevCodes.filter(code => code.class_code !== classCode),
       );
-    } catch (err) {}
+    } catch (err) {
+      console.error('handleRemoveClass threw', { classCode, err });
+    }
   };
   const handleLogout = async () => {
 
@@ -143,6 +152,7 @@ export default function TeacherDashboard () {
                 classCode={code.class_code}
                 classColor={code.class_color}
                 onRemove={() => handleRemoveClass(code.class_code)}
+                confirmingRemove={confirmingRemove === code.class_code}
               />
             ))}
           </div>

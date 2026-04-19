@@ -4,6 +4,7 @@ export default function Banner ({
   onClassLeave = () => {},
   onClassJoinOpen = () => {},
   isStudent = true,
+  confirmingLeave = false,
 }) {
   return (
     <div
@@ -60,7 +61,11 @@ export default function Banner ({
                 classCode ? () => onClassLeave() : () => onClassJoinOpen()
               }
             >
-              {classCode ? 'Leave Class' : 'Join Class'}
+              {classCode
+                ? confirmingLeave
+                  ? 'Confirm Leave?'
+                  : 'Leave Class'
+                : 'Join Class'}
             </button>
           </div>
         </>
