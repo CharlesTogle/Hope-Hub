@@ -217,6 +217,7 @@ async function getQuestionsFromQuizProgressIfExists(quizId) {
     .single();
 
   if (error) {
+    console.error('getQuestionsFromQuizProgressIfExists failed', { quizId, error });
   }
 
   return data ? data.questions_shuffled : null;
@@ -230,7 +231,8 @@ async function getQuestionsFromQuiz(quizId) {
     .single();
 
   if (error) {
-    return;
+    console.error('getQuestionsFromQuiz failed', { quizId, error });
+    return null;
   }
 
   return data.questions.questions;
@@ -243,6 +245,7 @@ async function getCurrentUser() {
   } = await supabase.auth.getUser();
 
   if (error) {
+    console.error('getCurrentUser failed', { error });
   }
   return user;
 }
@@ -260,6 +263,7 @@ async function fetchQuizStateIfExists(quizId) {
     .single();
 
   if (error) {
+    console.error('fetchQuizStateIfExists failed', { quizId, error });
   }
 
   return data;

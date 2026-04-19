@@ -20,6 +20,6 @@ export async function onProfileChange (
     .upload(filePath, file, { contentType: file.type, upsert: true });
 
   if (error) {
-  } else {
+    console.error('onProfileChange upload failed', { userID, filePath, error });
   }
 }
