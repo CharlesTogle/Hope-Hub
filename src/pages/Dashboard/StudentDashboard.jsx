@@ -21,13 +21,13 @@ export default function StudentDashboard () {
     completed: 0,
     incomplete: 0,
     pending: 0,
-    total: 10,
+    total: 0,
   });
   const [quizProgress, setQuizProgress] = useState({
     completed: 0,
     incomplete: 0,
     pending: 0,
-    total: 2,
+    total: 0,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isQuizLoading, setQuizLoading] = useState(false);
