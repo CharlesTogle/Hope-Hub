@@ -1,7 +1,7 @@
 import AuthContainer from '@/components/auth/AuthContainer';
 import FormContainer from '@/components/auth/FormContainer';
 import FormHeading from '@/components/auth/FormHeading';
-import FormButton from '../../components/auth/FormButton';
+import FormButton from '@/components/auth/FormButton';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useState } from 'react';
