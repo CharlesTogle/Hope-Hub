@@ -23,3 +23,9 @@ src/learn
 *.sln
 *.sw?
 *.env
+audit-2.md
+
+# agent files
+CLAUDE.md
+.claude/*
+.codex
