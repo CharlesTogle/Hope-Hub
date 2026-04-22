@@ -11,6 +11,7 @@ import { numberOfTests } from '@/utilities/PhysicalFitnessData';
 import { useQuery } from '@tanstack/react-query';
 import { profileKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
+import type { PFTSessionData } from '@/types/physical-fitness';
 
 const QUESTIONS = [
   'Has your doctor ever said that you have a heart condition and that you should only do physical activity recommended by a doctor?',
@@ -52,7 +53,7 @@ export default function PhysicalActivityReadinessQuestionnaire() {
       ...physicalFitnessData,
       isPARQFinished: true,
       finishedTestIndex: Array.from({ length: numberOfTests }, () => -1),
-    };
+    } as PFTSessionData;
     setPhysicalFitnessData(updatedData);
     setDataToStorage('physicalFitnessData', updatedData);
     const { error } = await supabase
@@ -67,7 +68,7 @@ export default function PhysicalActivityReadinessQuestionnaire() {
     navigate('/physical-fitness-test/test/0');
   };
 
-  const handleAnswerChange = (index, value) => {
+  const handleAnswerChange = (index: number, value: string) => {
     const current = [...answers];
     current[index] = value;
     const allNo = current.every((a, i) => (i !== QUESTIONS.length - 1 ? a === 'No' : a === 'Yes'));
@@ -94,18 +95,18 @@ export default function PhysicalActivityReadinessQuestionnaire() {
       let testType = '', testIndex = 0, newTest = true, testIndeces: number[] = [];
       if (!preFI.includes(max - 1)) {
         testType = 'pre_physical_fitness_test';
-        testIndex = preFI.findIndex((i) => i === -1);
+        testIndex = preFI.findIndex((i: number) => i === -1);
         newTest = testIndex === -1;
         testIndeces = preFI;
       } else if (!postFI.includes(max - 1)) {
         testType = 'post_physical_fitness_test';
-        testIndex = postFI.findIndex((i) => i === -1);
+        testIndex = postFI.findIndex((i: number) => i === -1);
         newTest = testIndex === -1;
         testIndeces = postFI;
       } else {
         setErrorMessage('You have already completed all tests.'); setIsError(true); return;
       }
-      const updatedData = { ...physicalFitnessData, isPARQFinished: true, ...(!newTest && { finishedTestIndex: testIndeces }) };
+      const updatedData = { ...physicalFitnessData, isPARQFinished: true, ...(!newTest && { finishedTestIndex: testIndeces }) } as PFTSessionData;
       setPhysicalFitnessData(updatedData);
       setDataToStorage('physicalFitnessData', updatedData);
       const { error: updateError } = await supabase
@@ -123,7 +124,7 @@ export default function PhysicalActivityReadinessQuestionnaire() {
   };
 
   const handleInformationChange = (keyName: string, value: string) => {
-    const updatedData = { ...physicalFitnessData, [keyName]: value };
+    const updatedData = { ...physicalFitnessData, [keyName]: value } as PFTSessionData;
     setPhysicalFitnessData(updatedData);
     setAreAllUserDataFilled(!!(updatedData.gender) && !!(updatedData.category));
   };
@@ -135,7 +136,7 @@ export default function PhysicalActivityReadinessQuestionnaire() {
       {isError && (
         <AlertMessage text={errorMessage} onConfirm={() => setIsError(false)} onCancel={() => setIsError(false)} />
       )}
-      <PageHeading text="Physical Fitness Test" />
+      <PageHeading text="Physical Fitness Test" className="" />
       <div id="physical-fitness-test-parq-container" className="content-container">
         <h2 id="heading" className="font-heading text-2xl text-center w-full lg:text-4xl lg:self-start! lg:text-left">
           Physical Activity Readiness Questionnaire (PAR-Q)

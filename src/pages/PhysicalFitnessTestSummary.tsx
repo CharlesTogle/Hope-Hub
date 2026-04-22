@@ -56,7 +56,8 @@ export function PhysicalFitnessTestSummary() {
         .single();
       if (error) throw error;
 
-      const pftData = data?.[columnName] as PFTSessionData | null;
+      const row = data as { pre_physical_fitness_test?: PFTSessionData | null; post_physical_fitness_test?: PFTSessionData | null } | null;
+      const pftData = row?.[columnName] ?? null;
       const finishedTests = pftData?.finishedTestIndex;
       if (!finishedTests) throw new Error('No test data');
       const max = finishedTests.length - 1;
@@ -75,7 +76,7 @@ export function PhysicalFitnessTestSummary() {
 
   return (
     <section id="physical-fitness-test-summary" className="parent-container">
-      <PageHeading text="Physical Fitness Test" />
+      <PageHeading text="Physical Fitness Test" className="" />
       <div id="summary-content" className="content-container">
         <h1 className="w-full text-left text-3xl lg:text-4xl font-heading lg:-ml-20 lg:mb-5 font-medium text-primary-blue">
           {testType === 'pre-test' ? 'Pre Test' : 'Post Test'} Record
