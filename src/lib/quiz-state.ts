@@ -1,6 +1,5 @@
 import supabase from '@/client/supabase';
-import type { QuizState } from '@/types/quiz';
-import type { QuizProgressRow } from '@/types/quiz';
+import type { QuizState, QuizProgressRow, QuizWithProgress } from '@/types/quiz';
 import { getCurrentUser } from '@/queries/quiz-queries';
 import { getUserRanking } from '@/queries/quiz-queries';
 
@@ -43,7 +42,7 @@ export async function extractQuizState(
   };
 }
 
-export async function extractQuizDetails(quizData: unknown[]): Promise<unknown[]> {
+export async function extractQuizDetails(quizData: QuizWithProgress[]): Promise<QuizWithProgress[]> {
   const user = await getCurrentUser();
   const { data: userData } = await supabase
     .from('profile')
@@ -54,30 +53,36 @@ export async function extractQuizDetails(quizData: unknown[]): Promise<unknown[]
 
   if (!Array.isArray(quizData) || quizData.length === 0) return quizData;
 
-  for (const quiz of quizData as Record<string, unknown>[]) {
-    const progress = (Array.isArray(quiz.quiz_progress) ? quiz.quiz_progress[0] : null) ?? {};
+  for (const quiz of quizData) {
+    const progress: QuizProgressRow | null =
+      (Array.isArray(quiz.quiz_progress) ? quiz.quiz_progress[0] : null) ?? null;
+
     quiz.number = quiz.id;
-    quiz.status = userType === 'student' ? (progress as Record<string, unknown>)?.status ?? 'Locked' : 'Pending';
-    quiz.details = !(progress as Record<string, unknown>).date_taken
+    quiz.status = userType === 'student' ? (progress?.status ?? 'Locked') : 'Pending';
+    quiz.details = !progress?.date_taken
       ? {}
       : {
-          Score: `${(progress as Record<string, unknown>).score}/${(progress as Record<string, unknown>).total_items}`,
-          Ranking: await getUserRanking(quiz.id as number),
-          'Date Taken': new Date((progress as Record<string, unknown>).date_taken as string).toLocaleDateString('en-US', {
+          Score: `${progress.score}/${progress.total_items}`,
+          Ranking: String(await getUserRanking(quiz.id)),
+          'Date Taken': new Date(progress.date_taken).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
             day: 'numeric',
           }),
-          'Start-time': new Date((progress as Record<string, unknown>).start_time as string).toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true,
-          }),
-          'End-time': new Date((progress as Record<string, unknown>).end_time as string).toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true,
-          }),
+          'Start-time': progress.start_time
+            ? new Date(progress.start_time).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+              })
+            : '',
+          'End-time': progress.end_time
+            ? new Date(progress.end_time).toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
+              })
+            : '',
         };
     quiz.content = quiz.description;
   }

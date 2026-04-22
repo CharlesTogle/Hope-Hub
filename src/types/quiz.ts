@@ -63,3 +63,11 @@ export interface QuizRow {
   questions: { questions: QuizQuestion[] };
   quiz_number: number;
 }
+
+export interface QuizWithProgress extends QuizRow {
+  quiz_progress?: QuizProgressRow[];
+  number?: number;
+  status?: QuizStatus;
+  details?: Record<string, string>;
+  content?: string;
+}
