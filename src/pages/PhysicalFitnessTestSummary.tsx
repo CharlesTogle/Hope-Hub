@@ -10,6 +10,7 @@ import { getBMICategory } from './HealthCalculators/BMICalculator';
 import { useQuery } from '@tanstack/react-query';
 import { pftKeys, profileKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
+import type { PFTSessionData, PFTTestResult } from '@/types/physical-fitness';
 
 export function PhysicalFitnessTestSummary() {
   const { testType } = useParams();
@@ -20,7 +21,7 @@ export function PhysicalFitnessTestSummary() {
   const targetUserId = studentId || userId;
   const isTeacherView = !!studentId;
 
-  const columnName =
+  const columnName: 'pre_physical_fitness_test' | 'post_physical_fitness_test' =
     testType === 'pre-test' ? 'pre_physical_fitness_test' : 'post_physical_fitness_test';
 
   const { data: studentInfo } = useQuery({
@@ -38,8 +39,7 @@ export function PhysicalFitnessTestSummary() {
 
   const { data: pftResult, isLoading, isError } = useQuery({
     queryKey: [...pftKeys.session(targetUserId ?? ''), columnName],
-    queryFn: async () => {
-      // Validate access for teacher view
+    queryFn: async (): Promise<PFTSessionData> => {
       if (isTeacherView) {
         const { data: exists } = await supabase
           .from('profile')
@@ -56,8 +56,8 @@ export function PhysicalFitnessTestSummary() {
         .single();
       if (error) throw error;
 
-      const pftData = (data as Record<string, unknown>)[columnName] as Record<string, unknown> | null;
-      const finishedTests = pftData?.finishedTestIndex as number[] | undefined;
+      const pftData = data?.[columnName] as PFTSessionData | null;
+      const finishedTests = pftData?.finishedTestIndex;
       if (!finishedTests) throw new Error('No test data');
       const max = finishedTests.length - 1;
       if (!finishedTests.includes(max)) throw new Error('Test not completed');
@@ -141,7 +141,16 @@ const TableHeading = ({ headings }: { headings: string[] }) => (
   </tr>
 );
 
-const TableSummary = ({ summary }: { summary: ReturnType<typeof handleData> }) => (
+interface SummaryRow {
+  hasParentHeading: boolean;
+  parentHeading: string | string[];
+  title: string;
+  number: string;
+  headings: string[];
+  content: string[];
+}
+
+const TableSummary = ({ summary }: { summary: SummaryRow }) => (
   <div id="summary">
     <div className="flex flex-row font-heading space-x-2 lg:text-lg">
       <p>{summary.number}.</p>
@@ -164,7 +173,15 @@ const TableSummary = ({ summary }: { summary: ReturnType<typeof handleData> }) =
   </div>
 );
 
-function handleData({ data, hasParentHeading = false, parentHeading = '', number, unit = '' }: { data: Record<string, string>; hasParentHeading?: boolean; parentHeading?: string; number: number; unit?: string }) {
+interface HandleDataParams {
+  data: PFTTestResult;
+  hasParentHeading?: boolean;
+  parentHeading?: string;
+  number: number;
+  unit?: string;
+}
+
+function handleData({ data, hasParentHeading = false, parentHeading = '', number, unit = '' }: HandleDataParams): SummaryRow {
   return {
     hasParentHeading,
     parentHeading: [parentHeading],
@@ -175,45 +192,54 @@ function handleData({ data, hasParentHeading = false, parentHeading = '', number
   };
 }
 
-function customHandleData({ title, hasParentHeading = false, parentHeading = '', headings = [] as string[], content = [] as string[], number }: { title: string; hasParentHeading?: boolean; parentHeading?: string | string[]; headings?: string[]; content?: string[]; number: number }) {
+interface CustomHandleDataParams {
+  title: string;
+  hasParentHeading?: boolean;
+  parentHeading?: string | string[];
+  headings?: string[];
+  content?: string[];
+  number: number;
+}
+
+function customHandleData({ title, hasParentHeading = false, parentHeading = '', headings = [], content = [], number }: CustomHandleDataParams): SummaryRow {
   return { hasParentHeading, parentHeading, title, number: number.toString(), headings, content };
 }
 
-function getSummary(dataGathered: Record<string, unknown>) {
-  const results = [];
+function getSummary(data: PFTSessionData): SummaryRow[] {
   const bmi = getBMI(
-    Number((dataGathered.bmiHeight as Record<string, string>)?.record),
-    Number((dataGathered.bmiWeight as Record<string, string>)?.record),
+    Number(data.bmiHeight?.record),
+    Number(data.bmiWeight?.record),
     'cm',
     'kg',
   );
-  results.push(customHandleData({
-    title: 'Body Mass Index',
-    headings: ['Height', 'Weight', 'BMI', 'Classification'],
-    content: [
-      `${(dataGathered.bmiHeight as Record<string, string>)?.record} cm`,
-      `${(dataGathered.bmiWeight as Record<string, string>)?.record} kg`,
-      `${bmi.toFixed(2)}`,
-      `${getBMICategory(bmi)}`,
-    ],
-    number: 1,
-  }));
-  results.push(customHandleData({
-    title: '3 Minute Step Test',
-    hasParentHeading: true,
-    parentHeading: ['Heart Rate per Minute'],
-    headings: ['Before the Activity', 'After the Activity'],
-    content: [
-      `${(dataGathered.preStepTest as Record<string, string>)?.record} Beats per Minute`,
-      `${(dataGathered.stepTest as Record<string, string>)?.record} Beats per Minute`,
-    ],
-    number: 2,
-  }));
-  results.push(handleData({ data: dataGathered.pushUp as Record<string, string>, number: 3 }));
-  results.push(handleData({ data: dataGathered.basicPlank as Record<string, string>, unit: 'Second(s)', number: 4 }));
-  results.push(handleData({ data: dataGathered.zipperTestRight as Record<string, string>, hasParentHeading: true, unit: 'cm', parentHeading: 'Overlap/Gap (centimeters)', number: 5 }));
-  results.push(handleData({ data: dataGathered.zipperTestLeft as Record<string, string>, hasParentHeading: true, unit: 'cm', parentHeading: 'Overlap/Gap (centimeters)', number: 6 }));
-  results.push(handleData({ data: dataGathered.sitAndReachFirst as Record<string, string>, hasParentHeading: true, unit: 'cm', parentHeading: 'Score (centimeters)', number: 7 }));
-  results.push(handleData({ data: dataGathered.sitAndReachSecond as Record<string, string>, hasParentHeading: true, unit: 'cm', parentHeading: 'Score (centimeters)', number: 8 }));
-  return results;
+  return [
+    customHandleData({
+      title: 'Body Mass Index',
+      headings: ['Height', 'Weight', 'BMI', 'Classification'],
+      content: [
+        `${data.bmiHeight?.record} cm`,
+        `${data.bmiWeight?.record} kg`,
+        `${bmi.toFixed(2)}`,
+        `${getBMICategory(bmi)}`,
+      ],
+      number: 1,
+    }),
+    customHandleData({
+      title: '3 Minute Step Test',
+      hasParentHeading: true,
+      parentHeading: ['Heart Rate per Minute'],
+      headings: ['Before the Activity', 'After the Activity'],
+      content: [
+        `${data.preStepTest?.record} Beats per Minute`,
+        `${data.stepTest?.record} Beats per Minute`,
+      ],
+      number: 2,
+    }),
+    handleData({ data: data.pushUp!, number: 3 }),
+    handleData({ data: data.basicPlank!, unit: 'Second(s)', number: 4 }),
+    handleData({ data: data.zipperTestRight!, hasParentHeading: true, unit: 'cm', parentHeading: 'Overlap/Gap (centimeters)', number: 5 }),
+    handleData({ data: data.zipperTestLeft!, hasParentHeading: true, unit: 'cm', parentHeading: 'Overlap/Gap (centimeters)', number: 6 }),
+    handleData({ data: data.sitAndReachFirst!, hasParentHeading: true, unit: 'cm', parentHeading: 'Score (centimeters)', number: 7 }),
+    handleData({ data: data.sitAndReachSecond!, hasParentHeading: true, unit: 'cm', parentHeading: 'Score (centimeters)', number: 8 }),
+  ];
 }

@@ -125,7 +125,7 @@ export default function PhysicalActivityReadinessQuestionnaire() {
   const handleInformationChange = (keyName: string, value: string) => {
     const updatedData = { ...physicalFitnessData, [keyName]: value };
     setPhysicalFitnessData(updatedData);
-    setAreAllUserDataFilled(['gender', 'category'].every((k) => !!(updatedData as Record<string, unknown>)[k]));
+    setAreAllUserDataFilled(!!(updatedData.gender) && !!(updatedData.category));
   };
 
   if (isLoading || !userId) return <Loading />;
