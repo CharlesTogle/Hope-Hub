@@ -1,18 +1,9 @@
-import { useEffect, useState } from 'react';
 import Container from './Container';
 export default function QuizScoreTable({ quizData, quizCount }) {
-  const [sortedQuizData, setSortedQuizData] = useState([]);
-  useEffect(() => {
-    if (!quizData || !Array.isArray(quizData) || quizData.length === 0) {
-      setSortedQuizData([]);
-      return;
-    }
-
-    const sortedQuizData = [...quizData].sort((a, b) => {
-      return a.quiz_id - b.quiz_id;
-    });
-    setSortedQuizData(sortedQuizData);
-  }, [quizData]);
+  const sortedQuizData =
+    Array.isArray(quizData) && quizData.length > 0
+      ? [...quizData].sort((a, b) => a.quiz_id - b.quiz_id)
+      : [];
 
   return (
     <Container className="p-0! mb-3">

@@ -18,6 +18,7 @@ import ActiveAboutIcon from '../assets/icons/activeIcons/ActiveAboutIcon.png';
 import ActiveProfileIcon from '../assets/icons/activeIcons/ActiveProfileIcon.png';
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+
 import '@/styles/sidebar.css';
 
 const SidebarButtons = [
@@ -60,18 +61,22 @@ export default function Sidebar ({ isOpen, onClose, setShowMenu }) {
   // Complete ActiveIconVariants for all sidebar buttons
 
   const location = useLocation();
-  const [active, setActive] = useState(-1);
   const navigate = useNavigate();
   const [isWide, setIsWide] = useState(false);
 
-  // Add isMobile variable
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
 
-  // Close sidebar on outside click (mobile only)
+  // Active index derived inline — no useState/useEffect needed
+  const active = SidebarButtons.findIndex(btn =>
+    btn.route === '/'
+      ? location.pathname === '/'
+      : location.pathname.startsWith(btn.route.replace(/\/$/, '')),
+  );
+
+  // DOM event listener — legitimate side effect
   useEffect(() => {
     if (!isMobile || !isOpen) return;
     const handleClick = e => {
-      // Only close if click is outside the sidebar
       const sidebar = document.getElementById('sidebar');
       if (sidebar && !sidebar.contains(e.target)) {
         if (onClose) onClose();
@@ -81,20 +86,9 @@ export default function Sidebar ({ isOpen, onClose, setShowMenu }) {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [isMobile, isOpen, onClose]);
 
-  // Determine active index based on current path
-  useEffect(() => {
-    const foundIndex = SidebarButtons.findIndex(btn => {
-      // Support both exact and partial matches for nested routes
-      if (btn.route === '/') return location.pathname === '/';
-      return location.pathname.startsWith(btn.route.replace(/\/$/, ''));
-    });
-    setActive(foundIndex);
-  }, [location.pathname]);
-
-  const handleClick = (index, route) => {
+  const handleClick = (_index, route) => {
     setShowMenu(true);
     navigate(route);
-    setActive(index);
     if (isMobile && typeof onClose === 'function') {
       onClose();
     }
