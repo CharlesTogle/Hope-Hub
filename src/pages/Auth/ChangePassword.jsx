@@ -4,7 +4,7 @@ import FormHeading from '@/components/auth/FormHeading';
 import FormInput from '@/components/auth/FormInput';
 import InputContainer from '@/components/auth/InputContainer';
 import FormButton from '@/components/auth/FormButton';
-import { useState, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import supabase from '@/client/supabase';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
@@ -18,15 +18,16 @@ export default function ChangePassword () {
   const access_token = searchParams.get('access_token');
   const type = searchParams.get('type');
   const navigate = useNavigate();
+  const sessionInitialized = useRef(false);
 
-  useEffect(() => {
-    if (type === 'recovery' && access_token) {
-      supabase.auth.setSession({
-        access_token,
-        refresh_token: searchParams.get('refresh_token') || '',
-      });
-    }
-  }, [searchParams, type, access_token]);
+  // Set recovery session once on first render — no useEffect needed
+  if (!sessionInitialized.current && type === 'recovery' && access_token) {
+    sessionInitialized.current = true;
+    supabase.auth.setSession({
+      access_token,
+      refresh_token: searchParams.get('refresh_token') || '',
+    });
+  }
 
   const handlePasswordChange = value => {
     setPassword(value);

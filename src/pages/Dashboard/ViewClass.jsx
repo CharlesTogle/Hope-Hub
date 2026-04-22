@@ -1,12 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Search from '@/components/dashboard/Search';
 import Table from '@/components/dashboard/ViewClass/Table';
 import { Lessons } from '@/utilities/Lessons';
-import { Quizzes } from '@/utilities/Quizzes';
 import { getStudentsByClassCode } from '@/services/getStudentDataByClassCode';
 import { cleanStudentData } from '@/services/cleanStudentData';
-import { useUserId } from '@/hooks/useUserId';
 import supabase from '@/client/supabase';
 import ErrorMessage from '@/components/utilities/ErrorMessage';
 import Loading from '@/components/Loading';
@@ -16,278 +14,125 @@ import {
   generateFilename,
 } from '@/utilities/exportStudentExcel';
 import { Download } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { classKeys, quizKeys } from '@/lib/query-keys';
+import { useAuthStore } from '@/store/auth-store';
 
-const transformDataLecture = data => {
-  return data.map(item => ({
-    Type: 'Lecture',
-    LessonNumber: item.key,
-  }));
-};
+// Static data — derived from static import at module level
+const lecturesData = Lessons.map(item => ({ Type: 'Lecture', LessonNumber: item.key }));
 
-const transformQuizData = data => {
-  return data.map(item => ({
-    Type: 'Quiz',
-    QuizNumber: item.quiz_number,
-  }));
-};
-
-function combineObjects (lectureArray, quizArray) {
-  return [...lectureArray, ...quizArray];
-}
 const getTableHeadings = (activeFilter, data) => {
   const headings = ['Name', 'Email'];
   if (activeFilter === 'Lecture') {
-    data.forEach(data => {
-      headings.push(`Lesson ${data.LessonNumber}`);
-    });
+    data.forEach(d => headings.push(`Lesson ${d.LessonNumber}`));
   } else if (activeFilter === 'Quiz') {
-    data.forEach(data => {
-      headings.push(`Quiz ${data.QuizNumber}`);
+    data.forEach(d => headings.push(`Quiz ${d.QuizNumber}`));
+  } else {
+    data.forEach(d => {
+      if (d.Type === 'Lecture') headings.push(`Lesson ${d.LessonNumber}`);
+      else if (d.Type === 'Quiz') headings.push(`Quiz ${d.QuizNumber}`);
     });
-  } else if (activeFilter === 'All') {
-    data.forEach(data => {
-      if (data.Type === 'Lecture') {
-        headings.push(`Lesson ${data.LessonNumber}`);
-      } else if (data.Type === 'Quiz') {
-        headings.push(`Quiz ${data.QuizNumber}`);
-      }
-    });
-    headings.push('Pre Test Record');
-    headings.push('Post Test Record');
+    headings.push('Pre Test Record', 'Post Test Record');
   }
   return headings;
 };
 
+const Filters = ['All', 'Lecture', 'Quiz'];
+
 export default function ViewClass () {
-  //initialize data
-
   const params = useParams();
-  const userId = useUserId();
-  const [lecturesData, setLecturesData] = useState([]);
-  const [quizData, setQuizData] = useState([]);
-  const [combinedData, setCombinedData] = useState([]);
-  const [activeFilter, setActiveFilter] = useState('All');
-  const [defaultStudentData, setDefaultStudentData] = useState([]);
-  const [lectureSubFilter, setLectureSubFilter] = useState('all');
-  const [isLoading, setIsLoading] = useState(false);
-  const [quizSubFilter, setQuizSubFilter] = useState('none');
-  const [isDataReady, setIsDataReady] = useState(false);
-  const [activeStudentData, setActiveStudentData] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [headings, setHeadings] = useState([]);
-  const [isOwnershipChecked, setIsOwnershipChecked] = useState(false);
-  const [hasOwnership, setHasOwnership] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const Filters = ['All', 'Lecture', 'Quiz'];
   const classCode = params.classCode;
+  const { profile } = useAuthStore();
+  const userId = profile?.uuid ?? null;
 
-  useEffect(() => {
-    async function fetchData () {
-      const resolvedQuizData = new Promise(resolve => {
-        resolve(Quizzes());
-      });
+  const [activeFilter, setActiveFilter] = useState('All');
+  const [lectureSubFilter, setLectureSubFilter] = useState('all');
+  const [quizSubFilter, setQuizSubFilter] = useState('none');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
-      const quizzes = await resolvedQuizData;
-      const lectures = transformDataLecture(Lessons);
-      const quizData = transformQuizData(quizzes);
-      const combined = combineObjects(lectures, quizData);
-      setHeadings(getTableHeadings('All', combined));
-      setLecturesData(lectures);
-      setQuizData(quizData);
-      setCombinedData(combined);
-    }
+  const { data: rawQuizData = [], isLoading: quizLoading } = useQuery({
+    queryKey: quizKeys.list(),
+    queryFn: async () => {
+      const { data, error } = await supabase.from('quiz').select('quiz_number');
+      return error ? [] : data;
+    },
+  });
 
-    fetchData();
-    setIsDataReady(true);
-  }, []);
+  const quizData = rawQuizData.map(item => ({ Type: 'Quiz', QuizNumber: item.quiz_number }));
+  const combinedData = [...lecturesData, ...quizData];
 
-  // Check if the current teacher owns this class
-  const checkClassOwnership = async () => {
-    if (!userId || !classCode) {
-      setHasOwnership(false);
-      setIsOwnershipChecked(true);
-      setIsLoading(true);
-      return;
-    }
-
-    try {
+  const { data: hasOwnership = false, isLoading: ownershipLoading } = useQuery({
+    queryKey: ['class', 'ownership', userId ?? '', classCode ?? ''],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from('teacher_class_code')
         .select('class_code')
         .eq('uuid', userId)
         .eq('class_code', classCode)
         .single();
+      return !error && !!data;
+    },
+    enabled: !!userId && !!classCode,
+  });
 
-      if (error || !data) {
-        setHasOwnership(false);
-      } else {
-        setHasOwnership(true);
-      }
-    } catch (err) {
-      setHasOwnership(false);
-    }
-    setIsLoading(false);
-    setIsOwnershipChecked(true);
-  };
-
-  useEffect(() => {
-    checkClassOwnership();
-  }, [userId, classCode]);
-
-  useEffect(() => {
-    if (!isOwnershipChecked) {
-      setIsLoading(true);
-    }
-    if (isOwnershipChecked && hasOwnership) {
-      getStudentData();
-    }
-  }, [isOwnershipChecked, hasOwnership]);
-
-  const getStudentData = async () => {
-    try {
-      setIsLoading(true);
+  const { data: defaultStudentData = [], isLoading: studentsLoading } = useQuery({
+    queryKey: classKeys.students(classCode ?? ''),
+    queryFn: async () => {
       const allStudentData = await getStudentsByClassCode(classCode);
-      const cleanedStudentData = cleanStudentData(allStudentData);
-      setActiveStudentData(cleanedStudentData);
-      setDefaultStudentData(cleanedStudentData);
-    } catch (error) {
-      setIsLoading(false);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      return cleanStudentData(allStudentData);
+    },
+    enabled: !!classCode && hasOwnership,
+  });
 
-  const handleSearch = searchTerm => {
-    setSearchTerm(searchTerm);
+  // Compute headings inline — no state
+  const activeData =
+    activeFilter === 'Lecture' ? lecturesData
+    : activeFilter === 'Quiz' ? quizData
+    : combinedData;
+  const headings = getTableHeadings(activeFilter, activeData);
 
-    // Get the current filtered data based on active filter and sub-filter
-    let baseData = defaultStudentData;
+  // Compute activeStudentData inline — no state
+  const lessonKeys = student => Object.keys(student).filter(k => k.startsWith('Lesson'));
 
-    // Apply lecture sub-filter if in Lecture mode
-    if (activeFilter === 'Lecture' && lectureSubFilter !== 'all') {
-      const lessonKeys = student => Object.keys(student).filter(k => k.startsWith('Lesson'));
-      if (lectureSubFilter === 'done') {
-        baseData = defaultStudentData.filter(student =>
-          lessonKeys(student).every(k => student[k] === 'Done'),
-        );
-      } else if (lectureSubFilter === 'pending') {
-        baseData = defaultStudentData.filter(student =>
-          lessonKeys(student).some(k => student[k] === 'Pending'),
-        );
-      } else if (lectureSubFilter === 'incomplete') {
-        baseData = defaultStudentData.filter(student =>
-          lessonKeys(student).some(k => student[k] === 'Incomplete'),
-        );
-      }
+  let filteredStudentData = defaultStudentData;
+
+  if (activeFilter === 'Lecture' && lectureSubFilter !== 'all') {
+    if (lectureSubFilter === 'done') {
+      filteredStudentData = defaultStudentData.filter(s => lessonKeys(s).every(k => s[k] === 'Done'));
+    } else if (lectureSubFilter === 'pending') {
+      filteredStudentData = defaultStudentData.filter(s => lessonKeys(s).some(k => s[k] === 'Pending'));
+    } else if (lectureSubFilter === 'incomplete') {
+      filteredStudentData = defaultStudentData.filter(s => lessonKeys(s).some(k => s[k] === 'Incomplete'));
     }
-    // Apply search filter
-    if (searchTerm.trim() === '') {
-      setActiveStudentData(baseData);
-    } else {
-      const filteredData = baseData.filter(student =>
-        student.studentName?.toLowerCase().includes(searchTerm.toLowerCase()),
-      );
-      setActiveStudentData(filteredData);
-    }
-  };
+  }
+
+  if (activeFilter === 'Quiz' && quizSubFilter !== 'none') {
+    const avgScore = student => {
+      let total = 0, count = 0;
+      Object.keys(student).forEach(key => {
+        if (key.startsWith('Quiz') && student[key] && student[key] !== 'Pending') {
+          const match = student[key].match(/(\d+)\/(\d+)/);
+          if (match) { total += parseInt(match[1]) / parseInt(match[2]); count++; }
+        }
+      });
+      return count > 0 ? total / count : 0;
+    };
+    filteredStudentData = [...filteredStudentData].sort((a, b) =>
+      quizSubFilter === 'ascending' ? avgScore(a) - avgScore(b) : avgScore(b) - avgScore(a),
+    );
+  }
+
+  const activeStudentData = searchTerm.trim()
+    ? filteredStudentData.filter(s => s.studentName?.toLowerCase().includes(searchTerm.toLowerCase()))
+    : filteredStudentData;
+
   const handleFilterChange = filter => {
     setActiveFilter(filter);
-    setSearchTerm(''); // Clear search when changing filters
-
-    if (filter === 'Lecture') {
-      setHeadings(getTableHeadings(filter, lecturesData));
-      setActiveStudentData(defaultStudentData);
-      handleLectureSubFilterChange('all');
-    } else if (filter === 'Quiz') {
-      setHeadings(getTableHeadings(filter, quizData));
-      setActiveStudentData(defaultStudentData);
-      handleQuizSubFilterChange('none');
-    } else if (filter === 'All') {
-      setHeadings(getTableHeadings(filter, combinedData));
-      setActiveStudentData(defaultStudentData);
-      setLectureSubFilter('all');
-      setQuizSubFilter('none');
-    }
-  };
-
-  const handleLectureSubFilterChange = filter => {
-    setLectureSubFilter(filter);
-    setSearchTerm(''); // Clear search when changing sub-filters
-
-    const lessonKeys = student => Object.keys(student).filter(k => k.startsWith('Lesson'));
-    if (filter === 'all') {
-      setActiveStudentData(defaultStudentData);
-    } else if (filter === 'done') {
-      setActiveStudentData(
-        defaultStudentData.filter(student =>
-          lessonKeys(student).every(k => student[k] === 'Done'),
-        ),
-      );
-    } else if (filter === 'pending') {
-      setActiveStudentData(
-        defaultStudentData.filter(student =>
-          lessonKeys(student).some(k => student[k] === 'Pending'),
-        ),
-      );
-    } else if (filter === 'incomplete') {
-      setActiveStudentData(
-        defaultStudentData.filter(student =>
-          lessonKeys(student).some(k => student[k] === 'Incomplete'),
-        ),
-      );
-    }
-  };
-
-  const handleQuizSubFilterChange = filter => {
-    setQuizSubFilter(filter);
-    setSearchTerm(''); // Clear search when changing sub-filters
-
-    if (filter === 'none') {
-      setActiveStudentData(defaultStudentData);
-    } else {
-      // Create a copy of the data to sort
-      let sortedData = [...defaultStudentData];
-
-      if (filter === 'ascending' || filter === 'descending') {
-        // Sort by quiz scores
-        sortedData.sort((a, b) => {
-          // Calculate average score for each student across all quizzes
-          let scoreA = 0;
-          let scoreB = 0;
-          let quizCountA = 0;
-          let quizCountB = 0;
-
-          // Check all quiz columns
-          Object.keys(a).forEach(key => {
-            if (key.startsWith('Quiz') && a[key] && a[key] !== 'Pending') {
-              const match = a[key].match(/(\d+)\/(\d+)/);
-              if (match) {
-                scoreA += parseInt(match[1]) / parseInt(match[2]);
-                quizCountA++;
-              }
-            }
-          });
-
-          Object.keys(b).forEach(key => {
-            if (key.startsWith('Quiz') && b[key] && b[key] !== 'Pending') {
-              const match = b[key].match(/(\d+)\/(\d+)/);
-              if (match) {
-                scoreB += parseInt(match[1]) / parseInt(match[2]);
-                quizCountB++;
-              }
-            }
-          });
-
-          // Calculate average scores (handle division by zero)
-          const avgA = quizCountA > 0 ? scoreA / quizCountA : 0;
-          const avgB = quizCountB > 0 ? scoreB / quizCountB : 0;
-
-          return filter === 'ascending' ? avgA - avgB : avgB - avgA;
-        });
-      }
-
-      setActiveStudentData(sortedData);
-    }
+    setSearchTerm('');
+    if (filter === 'Lecture') { setLectureSubFilter('all'); setQuizSubFilter('none'); }
+    else if (filter === 'Quiz') { setQuizSubFilter('none'); setLectureSubFilter('all'); }
+    else { setLectureSubFilter('all'); setQuizSubFilter('none'); }
   };
 
   const handleExportClass = async () => {
@@ -309,13 +154,8 @@ export default function ViewClass () {
     }
   };
 
-  if (isOwnershipChecked && !hasOwnership && !isLoading) {
-    return <ErrorMessage text='Error 404' subText='Class Not Found' />;
-  }
-
-  if (!isOwnershipChecked || isLoading || !isDataReady) {
-    return <Loading />;
-  }
+  if (ownershipLoading || studentsLoading || quizLoading) return <Loading />;
+  if (!hasOwnership) return <ErrorMessage text='Error 404' subText='Class Not Found' />;
 
   return (
     <section className='parent-container' id='view-class'>
@@ -349,7 +189,7 @@ export default function ViewClass () {
             >
               {Filters.map((filter, index) => (
                 <button
-                  key={index}
+                  key={filter}
                   onClick={() => handleFilterChange(filter)}
                   className={
                     `text-white text-center font-content py-2 min-w-1/8 px-5 text-sm lg:w-auto lg:px-5 transition-colors sticky top-0 ${
@@ -367,9 +207,7 @@ export default function ViewClass () {
             <div className='h-10 flex items-center'>
               {activeFilter === 'Lecture' && (
                 <div className='flex items-center gap-2 animate-fadeIn'>
-                  <span className='text-sm font-content text-gray-600'>
-                    Status:
-                  </span>
+                  <span className='text-sm font-content text-gray-600'>Status:</span>
                   <div className='flex bg-gray-100 rounded-md p-1'>
                     {[
                       { value: 'all', label: 'All' },
@@ -379,9 +217,7 @@ export default function ViewClass () {
                     ].map(option => (
                       <button
                         key={option.value}
-                        onClick={() =>
-                          handleLectureSubFilterChange(option.value)
-                        }
+                        onClick={() => setLectureSubFilter(option.value)}
                         className={`px-3 py-1 text-xs font-content rounded transition-colors ${
                           lectureSubFilter === option.value
                             ? 'bg-secondary-dark-blue text-white'
@@ -396,9 +232,7 @@ export default function ViewClass () {
               )}
               {activeFilter === 'Quiz' && (
                 <div className='flex items-center gap-2 animate-fadeIn'>
-                  <span className='text-sm font-content text-gray-600'>
-                    Sort by score:
-                  </span>
+                  <span className='text-sm font-content text-gray-600'>Sort by score:</span>
                   <div className='flex bg-gray-100 rounded-md p-1'>
                     {[
                       { value: 'none', label: 'Default' },
@@ -407,7 +241,7 @@ export default function ViewClass () {
                     ].map(option => (
                       <button
                         key={option.value}
-                        onClick={() => handleQuizSubFilterChange(option.value)}
+                        onClick={() => setQuizSubFilter(option.value)}
                         className={`px-3 py-1 text-xs font-content rounded transition-colors ${
                           quizSubFilter === option.value
                             ? 'bg-secondary-dark-blue text-white'
@@ -420,26 +254,20 @@ export default function ViewClass () {
                   </div>
                 </div>
               )}
-
               {activeFilter === 'All' && (
                 <div className='flex items-center gap-2 animate-fadeIn'>
-                  <span className='text-sm font-content text-gray-500 italic'>
-                    Showing all content
-                  </span>
+                  <span className='text-sm font-content text-gray-500 italic'>Showing all content</span>
                 </div>
               )}
             </div>
           </div>{' '}
-          <div
-            id='search'
-            className='w-full lg:w-[40%] flex items-center gap-3'
-          >
-            <Search onSearch={handleSearch} />
+          <div id='search' className='w-full lg:w-[40%] flex items-center gap-3'>
+            <Search onSearch={setSearchTerm} />
           </div>
         </div>{' '}
         <div className='w-full mt-10'>
           <div className='overflow-x-auto'>
-            <Table headings={headings} content={activeStudentData}></Table>
+            <Table headings={headings} content={activeStudentData} />
           </div>
         </div>
       </div>

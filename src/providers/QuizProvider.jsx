@@ -1,10 +1,8 @@
-import { useRef, useState, useEffect } from 'react';
-import {
-  extractQuizState,
-  fetchQuizQuestions,
-  fetchQuizStateIfExists,
-} from '@/utilities/QuizData';
+import { useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { fetchQuizQuestions, fetchQuizStateIfExists } from '@/queries/quiz-queries';
+import { extractQuizState } from '@/lib/quiz-state';
 import {
   QuestionsContext,
   IdentificationRefContext,
@@ -12,49 +10,58 @@ import {
   QuizContext,
 } from '@/providers/QuizContext';
 import Loading from '@/components/Loading';
+import { useQuizStore } from '@/store/quiz-store';
+import { quizKeys } from '@/lib/query-keys';
 
 export default function QuizProvider({ children }) {
-  const [isLoading, setIsLoading] = useState(true);
-  const [questions, setQuestions] = useState([]);
-  const [quizState, setQuizState] = useState(null);
+  const { quizId } = useParams();
+  const { setQuestions, setQuizState, quizState, setQuizState: storeSetQuizState } = useQuizStore();
 
   const identificationAnswerRef = useRef('');
   const remainingTimeRef = useRef(0);
 
-  const { quizId } = useParams();
-
-  useEffect(() => {
-    async function fetchAndSetQuizQuestions(quizId) {
+  const { isLoading, data } = useQuery({
+    queryKey: quizKeys.detail(quizId),
+    queryFn: async () => {
       const questions = await fetchQuizQuestions(quizId);
-
-      const extractedQuizState = await extractQuizState(
+      const rawState = await fetchQuizStateIfExists(quizId);
+      const extracted = await extractQuizState(quizId, rawState);
+      const state = extracted ?? {
         quizId,
-        await fetchQuizStateIfExists(quizId),
-      );
-
-      if (extractedQuizState.remainingTime === 0)
-        extractedQuizState.remainingTime = questions[0].duration;
-
-      setQuizState(extractedQuizState);
+        questionIndex: 0,
+        score: 0,
+        points: 0,
+        currentQuestionPoints: 0,
+        status: 'Pending',
+        remainingTime: questions[0]?.duration ?? 30,
+        questionsAnswered: [],
+      };
+      if (state.remainingTime === 0) state.remainingTime = questions[0]?.duration ?? 30;
       setQuestions(questions);
-      setIsLoading(false);
-    }
+      storeSetQuizState(state);
+      return { questions, state };
+    },
+    staleTime: 0,
+  });
 
-    fetchAndSetQuizQuestions(quizId);
-  }, [quizId]);
+  // Derive context values: prefer store (live updates) over query snapshot
+  const contextQuizState = quizState ?? data?.state ?? null;
+  const contextQuestions = data?.questions ?? [];
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[70vh]">
+        <Loading />
+      </div>
+    );
+  }
 
   return (
-    <QuizContext.Provider value={{ quizState, setQuizState }}>
-      <QuestionsContext.Provider value={questions}>
+    <QuizContext.Provider value={{ quizState: contextQuizState, setQuizState: storeSetQuizState }}>
+      <QuestionsContext.Provider value={contextQuestions}>
         <RemainingTimeContext.Provider value={remainingTimeRef}>
           <IdentificationRefContext.Provider value={identificationAnswerRef}>
-            {isLoading ? (
-              <div className="flex items-center justify-center h-[70vh]">
-                <Loading />
-              </div>
-            ) : (
-              children
-            )}
+            {children}
           </IdentificationRefContext.Provider>
         </RemainingTimeContext.Provider>
       </QuestionsContext.Provider>

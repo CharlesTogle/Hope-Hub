@@ -3,11 +3,9 @@ import FormContainer from '@/components/auth/FormContainer';
 import FormHeading from '@/components/auth/FormHeading';
 import FormButton from '@/components/auth/FormButton';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useEffect } from 'react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import ErrorMessage from '@/components/utilities/ErrorMessage';
 import supabase from '@/client/supabase';
-import { useRef } from 'react';
 import Loading from '@/components/Loading';
 
 export default function AccountVerification () {
@@ -156,12 +154,11 @@ export default function AccountVerification () {
     setIsLoading(false);
   };
 
-  useEffect(() => {
-    if (!userRegistered.current) {
-      userRegistered.current = true;
-      handleRegister();
-    }
-  }, []);
+  // Run once on first render — ref prevents StrictMode double-call
+  if (!userRegistered.current) {
+    userRegistered.current = true;
+    handleRegister();
+  }
 
   if (isExpiredLink) {
     return (

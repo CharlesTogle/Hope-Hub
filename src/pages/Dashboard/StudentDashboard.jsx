@@ -1,393 +1,275 @@
 import Banner from '@/components/dashboard/Banner';
 import Statistics from '@/components/dashboard/Statistics';
 import supabase from '@/client/supabase';
-import { useUserId } from '@/hooks/useUserId';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import JoinClass from '@/components/dashboard/JoinClass';
 import ProfileSidebar from '@/components/dashboard/ProfileSidebar';
-import { useName, useProfilePicture } from '@/hooks/useDashboardData';
+import { useStudentName } from '@/hooks/use-student-name';
+import { useProfilePicture } from '@/hooks/use-profile-picture';
 import DashboardContainer from '@/components/dashboard/DashboardContainer';
 import { onProfileChange as onProfileChangeUtil } from '@/utilities/onProfileChange';
 import { LogOut } from 'lucide-react';
 import QuizScoreTable from '@/components/dashboard/QuizScoreTable';
 import Loading from '@/components/Loading';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { profileKeys, lectureKeys, pftKeys, classKeys, quizKeys } from '@/lib/query-keys';
+import { useAuthStore } from '@/store/auth-store';
 
-export default function StudentDashboard () {
-  const userID = useUserId();
-  const [preTestFinished, setPreTestFinished] = useState(false);
-  const [postTestFinished, setPostTestFinished] = useState(false);
-  const [lectureProgress, setLectureProgress] = useState({
-    completed: 0,
-    incomplete: 0,
-    pending: 0,
-    total: 0,
-  });
-  const [quizProgress, setQuizProgress] = useState({
-    completed: 0,
-    incomplete: 0,
-    pending: 0,
-    total: 0,
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [isQuizLoading, setQuizLoading] = useState(false);
-  const [classCode, setClassCode] = useState(null);
+export default function StudentDashboard() {
+  const { profile, logout } = useAuthStore();
+  const userID = profile?.uuid ?? null;
   const [tempClassCode, setTempClassCode] = useState('');
   const [isJoiningClass, setIsJoiningClass] = useState(false);
   const [confirmingLeave, setConfirmingLeave] = useState(false);
-  const [quizData, setQuizData] = useState([]);
-  const [quizCount, setQuizCount] = useState(0);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const [profilePictureFile, setProfilePictureFile] = useProfilePicture(userID);
+  const studentName = useStudentName(userID);
+  const profilePictureFile = useProfilePicture(userID);
   const memoizedFile = useMemo(
     () => profilePictureFile,
-    [profilePictureFile?.name, profilePictureFile?.size],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [profilePictureFile?.size],
   );
-  const studentName = useName(userID);
-  let sampleProgress = {
-    completed: 7,
-    incomplete: 10,
-    pending: 8,
-  };
-  sampleProgress = {
-    ...sampleProgress,
-    total: Object.values(sampleProgress).reduce((acc, value) => acc + value, 0),
-  };
 
-  const getQuizProgress = useCallback(async () => {
-    if (!userID) {
-      setIsLoading(true);
-      return;
-    }
+  // Lecture progress
+  const { data: lectureProgressData, isLoading: lectureLoading } = useQuery({
+    queryKey: lectureKeys.progress(userID ?? ''),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('lecture_progress')
+        .select('lecture_progress')
+        .eq('uuid', userID)
+        .single();
+      if (error) return { completed: 0, incomplete: 0, pending: 0, total: 0 };
+      const lectures = data.lecture_progress || [];
+      let completed = 0, incomplete = 0, pending = 0;
+      lectures.forEach((item) => {
+        if (item.status === 'Done') completed++;
+        else if (item.status === 'Incomplete') incomplete++;
+        else if (item.status === 'Pending') pending++;
+      });
+      return { completed, incomplete, pending, total: lectures.length };
+    },
+    enabled: !!userID,
+  });
 
-    const { count: quizCount } = await supabase
-      .from('quiz')
-      .select('*', { count: 'exact' });
+  // Quiz count
+  const { data: quizCount = 0 } = useQuery({
+    queryKey: [...quizKeys.all, 'count'],
+    queryFn: async () => {
+      const { count } = await supabase.from('quiz').select('*', { count: 'exact', head: true });
+      return count ?? 0;
+    },
+    enabled: !!userID,
+  });
 
-    const { data: quizProgress, error: quizError } = await supabase
-      .from('quiz_progress')
-      .select('status')
-      .eq('user_id', userID);
+  // Quiz progress stats
+  const { data: quizProgressStats, isLoading: quizStatsLoading } = useQuery({
+    queryKey: [...quizKeys.all, 'progress-stats', userID ?? ''],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('quiz_progress')
+        .select('status')
+        .eq('user_id', userID);
+      if (error) return { completed: 0, incomplete: 0, pending: 0, total: quizCount };
+      let completed = 0, pending = 0;
+      data.forEach((item) => {
+        if (item.status === 'Done') completed++;
+        else if (item.status === 'Pending') pending++;
+      });
+      return { completed, incomplete: quizCount - completed - pending, pending, total: quizCount };
+    },
+    enabled: !!userID && quizCount > 0,
+  });
 
-    setQuizCount(quizCount);
-    if (quizError) {
-      return;
-    }
-    let completed = 0;
-    let incomplete = 0;
-    let pending = 0;
-    quizProgress.forEach(item => {
-      if (item.status === 'Done') completed += 1;
-      else if (item.status === 'Pending') pending += 1;
-    });
-
-    incomplete = quizCount - (completed + pending);
-
-    setQuizProgress({
-      completed,
-      incomplete,
-      pending,
-      total: quizCount,
-    });
-  }, [userID]);
-
-  const getQuizData = useCallback(async () => {
-    if (!userID || quizCount === 0) {
-      setIsLoading(true);
-      return;
-    }
-
-    setQuizLoading(true);
-
-    const { data: quizData, error: quizDataError } = await supabase
-      .from('quiz_progress')
-      .select('quiz_id, status, score, total_items, date_taken')
-      .eq('user_id', userID);
-
-    if (quizDataError) return;
-
-    const completeQuizData = [];
-    for (let index = 1; index <= quizCount; index++) {
-      let isFound = false;
-      let existingQuiz = null;
-
-      if (quizData) {
-        quizData.forEach(element => {
-          if (element.quiz_id === index) {
-            isFound = true;
-            existingQuiz = element;
-            return;
-          }
-        });
+  // Quiz detail data for table
+  const { data: quizData = [], isLoading: quizDataLoading } = useQuery({
+    queryKey: [...quizKeys.all, 'detail-data', userID ?? ''],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('quiz_progress')
+        .select('quiz_id, status, score, total_items, date_taken')
+        .eq('user_id', userID);
+      if (error) return [];
+      const result = [];
+      for (let i = 1; i <= quizCount; i++) {
+        const found = data?.find((q) => q.quiz_id === i);
+        result.push(found ?? { quiz_id: i, status: 'Incomplete', score: undefined, total_items: undefined, date_taken: undefined });
       }
-      if (isFound && existingQuiz) {
-        completeQuizData.push(existingQuiz);
-      } else {
-        completeQuizData.push({
-          quiz_id: index,
-          status: 'Incomplete',
-          score: undefined,
-          total_items: undefined,
-          date_taken: undefined,
-        });
-      }
-    }
-    setQuizData(completeQuizData);
-    setQuizLoading(false);
-    setIsLoading(false);
-  }, [userID, quizCount]);
+      return result;
+    },
+    enabled: !!userID && quizCount > 0,
+  });
 
-  const getLectureProgress = useCallback(async () => {
-    if (!userID) {
-      setIsLoading(true);
-      return;
-    }
-    const { data, error } = await supabase
-      .from('lecture_progress')
-      .select('lecture_progress')
-      .eq('uuid', userID)
-      .single();
+  // Class code
+  const { data: classCode } = useQuery({
+    queryKey: classKeys.studentCode(userID ?? ''),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('student_class_code')
+        .select('class_code')
+        .eq('uuid', userID)
+        .single();
+      if (error) return null;
+      return data?.class_code ?? null;
+    },
+    enabled: !!userID,
+  });
 
-    if (error) {
-      return;
-    }
+  // PFT status
+  const { data: pftData } = useQuery({
+    queryKey: pftKeys.session(userID ?? ''),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('physical_fitness_test')
+        .select('pre_physical_fitness_test, post_physical_fitness_test')
+        .eq('uuid', userID)
+        .single();
+      if (error) return { preFinished: false, postFinished: false };
+      const checkFinished = (col) => {
+        const fi = col?.finishedTestIndex;
+        return !!(fi && fi.includes(fi.length - 1));
+      };
+      return {
+        preFinished: checkFinished(data.pre_physical_fitness_test),
+        postFinished: checkFinished(data.post_physical_fitness_test),
+      };
+    },
+    enabled: !!userID,
+  });
 
-    const lectures = data.lecture_progress || [];
-    let completed = 0;
-    let incomplete = 0;
-    let pending = 0;
+  const joinMutation = useMutation({
+    mutationFn: async (code) => {
+      const { count, error } = await supabase
+        .from('teacher_class_code')
+        .select('*', { count: 'exact', head: true })
+        .eq('class_code', code);
+      if (error || count === 0) throw new Error('Invalid class code');
+      const { error: joinErr } = await supabase
+        .from('student_class_code')
+        .update({ class_code: code })
+        .eq('uuid', userID);
+      if (joinErr) throw joinErr;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: classKeys.studentCode(userID ?? '') });
+      setIsJoiningClass(false);
+    },
+    onError: () => alert('Invalid class code or error joining class.'),
+  });
 
-    lectures.forEach(item => {
-      if (item.status === 'Done') completed += 1;
-      else if (item.status === 'Incomplete') incomplete += 1;
-      else if (item.status === 'Pending') pending += 1;
-    });
+  const leaveMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase
+        .from('student_class_code')
+        .update({ class_code: null })
+        .eq('uuid', userID);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setConfirmingLeave(false);
+      queryClient.invalidateQueries({ queryKey: classKeys.studentCode(userID ?? '') });
+    },
+  });
 
-    setLectureProgress({
-      completed,
-      incomplete,
-      pending,
-      total: lectures.length,
-    });
-  }, [userID]);
-
-  const getClassCode = useCallback(async () => {
-    if (!userID) {
-      setIsLoading(true);
-      return;
-    }
-    const { data, error } = await supabase
-      .from('student_class_code')
-      .select()
-      .single()
-      .eq('uuid', userID);
-    if (error) {
-      setClassCode('');
-      return;
-    }
-    const classCode = data?.class_code;
-    if (!classCode) setClassCode(null);
-    else {
-      setClassCode(classCode);
-    }
-  }, [userID]);
-
-  useEffect(() => {
-    getClassCode();
-  }, [userID, getClassCode]);
-
-  useEffect(() => {
-    getLectureProgress();
-  }, [userID, getLectureProgress]);
-
-  useEffect(() => {
-    getQuizProgress();
-  }, [userID, getQuizProgress]);
-  useEffect(() => {
-    getQuizData();
-  }, [userID, quizCount, getQuizData]);
-
-  useEffect(() => {
-    isPreTestFinished().then(setPreTestFinished);
-    isPostTestFinished().then(setPostTestFinished);
-  }, [userID]);
-
-  const checkIfFinished = async column => {
-    if (!userID) {
-      setIsLoading(true);
-      return;
-    }
-    const { data: existing, error: fetchError } = await supabase
-      .from('physical_fitness_test')
-      .select(column)
-      .eq('uuid', userID)
-      .single();
-
-    if (fetchError) {
-      return;
-    }
-    if (existing[column] && existing[column].finishedTestIndex) {
-      const { finishedTestIndex } = existing[column];
-      return (
-        finishedTestIndex &&
-        finishedTestIndex.includes(finishedTestIndex.length - 1)
-      );
-    }
+  const handleLeaveClass = () => {
+    if (!confirmingLeave) { setConfirmingLeave(true); return; }
+    leaveMutation.mutate();
   };
 
-  const isPreTestFinished = async () => {
-    return await checkIfFinished('pre_physical_fitness_test');
-  };
-
-  const isPostTestFinished = async () => {
-    return await checkIfFinished('post_physical_fitness_test');
-  };
-
-  const handlePostTestClick = () => {
-    if (postTestFinished) {
-      navigate('/physical-fitness-test/summary/post-test');
-    }
-  };
-  const handlePreTestClick = () => {
-    if (preTestFinished) {
-      navigate('/physical-fitness-test/summary/pre-test');
-    }
-  };
-
-  const handleLeaveClass = async () => {
-    if (!confirmingLeave) {
-      setConfirmingLeave(true);
-      return;
-    }
-    setConfirmingLeave(false);
-    const { error: leaveClassError } = await supabase
-      .from('student_class_code')
-      .update({ class_code: null })
-      .eq('uuid', userID);
-    if (leaveClassError) {
-      console.error('handleLeaveClass failed', { userID, leaveClassError });
-      return;
-    }
-    setClassCode(null);
-  };
-
-  const handleJoinClass = async () => {
-    // Validate that the class code exists in the teacher's class_code table
-    const { count, error: fetchError } = await supabase
-      .from('teacher_class_code')
-      .select('*', { count: 'exact', head: true })
-      .eq('class_code', tempClassCode);
-
-    if (fetchError || count === 0) {
-      alert('Invalid class code. Please check and try again.');
-      return;
-    }
-
-    const { error: joinClassError } = await supabase
-      .from('student_class_code')
-      .update({ class_code: tempClassCode })
-      .eq('uuid', userID);
-    if (joinClassError) {
-      alert('Error joining class. Please try again.');
-      return;
-    }
-    setIsJoiningClass(false);
-    setClassCode(tempClassCode);
-  };
+  const handleJoinClass = () => joinMutation.mutate(tempClassCode);
 
   const handleProfileChange = async (file, fileName = 'profilePicture') => {
     await onProfileChangeUtil(userID, file, fileName);
   };
 
-  // Optionally, add a guard for userID before rendering:
-  if (!userID || isLoading || isQuizLoading) {
-    return <Loading />;
-  }
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    localStorage.removeItem('lectureProgress');
-    localStorage.removeItem('physicalFitnessData');
+    await logout();
     navigate('/auth/login');
   };
+
+  const isLoading = lectureLoading || quizStatsLoading || quizDataLoading;
+
+  if (!userID || isLoading) return <Loading />;
+
   return (
-    <section className='student-dashboard parent-container'>
+    <section className="student-dashboard parent-container">
       {isJoiningClass && (
         <JoinClass
           setTempClassCode={setTempClassCode}
           tempClassCode={tempClassCode}
           handleClose={() => setIsJoiningClass(false)}
           handleJoinClass={handleJoinClass}
-        ></JoinClass>
+        />
       )}
-      <div className='lg:px-10 px-5 md:px-10 mt-5 mb-5 lg:mb-0 grid grid-cols-2 place-content-center w-full lg:w-fit lg:block '>
+      <div className="lg:px-10 px-5 md:px-10 mt-5 mb-5 lg:mb-0 grid grid-cols-2 place-content-center w-full lg:w-fit lg:block">
         <div>
-          <h1 className='font-heading text-primary-blue text-4xl lg:text-5xl'>
-            Dashboard
-          </h1>
-          <hr className='lg:w-90 border-1 border-primary-yellow mt-3' />
+          <h1 className="font-heading text-primary-blue text-4xl lg:text-5xl">Dashboard</h1>
+          <hr className="lg:w-90 border-1 border-primary-yellow mt-3" />
         </div>
         <div>
           <button
-            className='lg:hidden ml-auto text-base font-bold font-content px-3 py-2 text-white bg-[#DB4E34] flex items-center gap-2 cursor-pointer'
-            onClick={() => handleLogout()}
+            className="lg:hidden ml-auto text-base font-bold font-content px-3 py-2 text-white bg-[#DB4E34] flex items-center gap-2 cursor-pointer"
+            onClick={handleLogout}
           >
-            <LogOut className='w-6 h-6' /> Logout
+            <LogOut className="w-6 h-6" /> Logout
           </button>
         </div>
       </div>
       <DashboardContainer>
-        <div id='content' className='w-full mb-20'>
+        <div id="content" className="w-full mb-20">
           <Banner
             name={studentName}
             classCode={classCode}
             onClassLeave={handleLeaveClass}
             onClassJoinOpen={() => setIsJoiningClass(true)}
             confirmingLeave={confirmingLeave}
-          ></Banner>
-          <div id='statistics' className='grid grid-cols-2 gap-5'>
-            <div id='lectures'>
-              <Statistics progress={lectureProgress} type='Lectures' />
+          />
+          <div id="statistics" className="grid grid-cols-2 gap-5">
+            <div id="lectures">
+              <Statistics
+                progress={lectureProgressData ?? { completed: 0, incomplete: 0, pending: 0, total: 0 }}
+                type="Lectures"
+              />
             </div>
-            <div id='quizzes'>
-              <Statistics progress={quizProgress} type='Quizzes' />
+            <div id="quizzes">
+              <Statistics
+                progress={quizProgressStats ?? { completed: 0, incomplete: 0, pending: 0, total: 0 }}
+                type="Quizzes"
+              />
             </div>
           </div>
-          <div id='quiz-scores' className='w-full text-center'>
-            <QuizScoreTable
-              quizData={quizData}
-              quizCount={quizCount}
-            ></QuizScoreTable>
+          <div id="quiz-scores" className="w-full text-center">
+            <QuizScoreTable quizData={quizData} quizCount={quizCount} />
           </div>
-          <div
-            id='physical-fitness-records'
-            className='w-full text-center grid grid-cols-2 gap-5'
-          >
+          <div id="physical-fitness-records" className="w-full text-center grid grid-cols-2 gap-5">
             <button
-              className='lg:p-7 lg:text-base text-xs p-5 bg-neutral-dark-blue text-white font-content rounded-md hover:brightness-90 cursor-pointer disabled:brightness-80 disabled:cursor-not-allowed'
-              disabled={!preTestFinished}
-              onClick={() => handlePreTestClick()}
+              className="lg:p-7 lg:text-base text-xs p-5 bg-neutral-dark-blue text-white font-content rounded-md hover:brightness-90 cursor-pointer disabled:brightness-80 disabled:cursor-not-allowed"
+              disabled={!pftData?.preFinished}
+              onClick={() => pftData?.preFinished && navigate('/physical-fitness-test/summary/pre-test')}
             >
               VIEW PFT - PRE TEST RECORD
             </button>
             <button
-              className='lg:p-7 lg:text-base text-xs p-5 bg-neutral-dark-blue text-white font-content rounded-md hover:brightness-90 cursor-pointer disabled:brightness-80 disabled:cursor-not-allowed'
-              disabled={!postTestFinished}
-              onClick={() => handlePostTestClick()}
+              className="lg:p-7 lg:text-base text-xs p-5 bg-neutral-dark-blue text-white font-content rounded-md hover:brightness-90 cursor-pointer disabled:brightness-80 disabled:cursor-not-allowed"
+              disabled={!pftData?.postFinished}
+              onClick={() => pftData?.postFinished && navigate('/physical-fitness-test/summary/post-test')}
             >
               VIEW PFT - POST TEST RECORD
             </button>
           </div>
         </div>
         <div
-          id='profile'
-          className='hidden sticky w-full h-full max-h-[90vh]! top-0 bg-white lg:flex flex-col items-center justify-start'
+          id="profile"
+          className="hidden sticky w-full h-full max-h-[90vh]! top-0 bg-white lg:flex flex-col items-center justify-start"
         >
           <ProfileSidebar
             handleLogout={handleLogout}
             memoizedFile={memoizedFile}
             onProfileChange={handleProfileChange}
-            userType='Student'
+            userType="Student"
             name={studentName}
           />
         </div>

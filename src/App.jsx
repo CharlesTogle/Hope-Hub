@@ -1,10 +1,9 @@
 import './styles/global.css';
-import { useState, useEffect, useCallback, memo } from 'react';
+import { useState, useEffect, useCallback, memo, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import About from './pages/About';
 import Lectures from './pages/LecturesIntroduction';
 import LecturePage from './pages/LecturePage';
-import PhysicalFitnessDataProvider from './providers/PhysicalFitnessDataProvider';
 import { PhysicalFitnessTestPage } from './pages/PhysicalFitnessTestPage';
 import PhysicalActivityReadinessQuestionnaire from './pages/PhysicalActivityReadinessQuestionnaire';
 import NotFound from './pages/NotFound';
@@ -16,9 +15,9 @@ import {
   Route,
   Outlet,
   useLocation,
+  useNavigate,
 } from 'react-router-dom';
 import HealthCalculator from './pages/HealthCalculators/HealthCalculator';
-import LectureProgressProvider from './providers/LectureProvider';
 import Home from './pages/Home';
 import { PhysicalFitnessTestSummary } from './pages/PhysicalFitnessTestSummary';
 import Login from './pages/Auth/Login';
@@ -30,7 +29,6 @@ import StudentDashboard from './pages/Dashboard/StudentDashboard';
 import HamburgerMenu from './assets/icons/hamburger_icon.png';
 import AccountVerification from './pages/Auth/AccountVerification';
 import TeacherDashboard from './pages/Dashboard/TeacherDashboard';
-import supabase from './client/supabase';
 import BMICalculator from './pages/HealthCalculators/BMICalculator';
 import BMRCalculator from './pages/HealthCalculators/BMRCalculator';
 import IBWCalculator from './pages/HealthCalculators/IBWCalculator';
@@ -39,10 +37,13 @@ import WaterIntakeCalculator from './pages/HealthCalculators/WaterIntakeCalculat
 import HeartRateCalculator from './pages/HealthCalculators/HeartRateCalculator';
 import { HealthCalculatorWrapper } from './pages/HealthCalculators/HealthCalculatorsWrapper';
 import ViewClass from './pages/Dashboard/ViewClass';
-import { useUserId } from './hooks/useUserId';
 import Loading from './components/Loading';
-import { useRef } from 'react';
 import { Toaster } from '@/components/ui/sonner';
+import { useAuthStore } from '@/store/auth-store';
+import { usePhysicalFitnessStore } from '@/store/physical-fitness-store';
+import { useLectureStore } from '@/store/lecture-store';
+import { PhysicalFitnessData } from '@/utilities/PhysicalFitnessData';
+import LectureProgress from '@/utilities/LectureProgress';
 
 const HamburgerMenuComponent = memo(({ showMenu, onHamburgerClick }) => {
   return (
@@ -134,6 +135,14 @@ function SidebarLayout() {
 
 const PhysicalFitnessWrapper = () => {
   const containerRef = useRef(null);
+  const { sessionData, setSessionData } = usePhysicalFitnessStore();
+
+  // Seed store with defaults on first mount if empty
+  useEffect(() => {
+    if (!sessionData) {
+      setSessionData(PhysicalFitnessData);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handleScrollToTop = () => {
@@ -141,29 +150,28 @@ const PhysicalFitnessWrapper = () => {
         containerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
       }
     };
-
     window.addEventListener('scrollPFTContainerToTop', handleScrollToTop);
-
-    return () => {
-      window.removeEventListener('scrollPFTContainerToTop', handleScrollToTop);
-    };
+    return () => window.removeEventListener('scrollPFTContainerToTop', handleScrollToTop);
   }, []);
 
   return (
-    <PhysicalFitnessDataProvider>
-      <div ref={containerRef} className="h-full overflow-y-auto">
-        <Outlet />
-      </div>
-    </PhysicalFitnessDataProvider>
+    <div ref={containerRef} className="h-full overflow-y-auto">
+      <Outlet />
+    </div>
   );
 };
 
 const LectureWrapper = () => {
-  return (
-    <LectureProgressProvider>
-      <Outlet />
-    </LectureProgressProvider>
-  );
+  const { lectureProgress, setLectureProgress } = useLectureStore();
+
+  // Seed store with defaults on first mount if empty
+  useEffect(() => {
+    if (lectureProgress.length === 0) {
+      setLectureProgress(LectureProgress());
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return <Outlet />;
 };
 
 const AuthWrapper = () => {
@@ -171,38 +179,22 @@ const AuthWrapper = () => {
 };
 
 const ProfileWrapper = () => {
-  const [isTeacher, setIsTeacher] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const userID = useUserId();
+  const { profile, isLoading, hydrate } = useAuthStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    async function getType() {
-      if (!userID) {
-        return;
-      }
-      const { data, error: userTypeError } = await supabase
-        .from('profile')
-        .select('user_type')
-        .eq('uuid', userID)
-        .single();
-      if (userTypeError) {
-        return;
-      }
-      setIsTeacher(data.user_type === 'teacher');
-      setIsLoading(false);
+    hydrate();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!isLoading && !profile) {
+      navigate('/auth/login');
     }
-    getType();
-  }, [userID]);
+  }, [isLoading, profile, navigate]);
 
-  if (isLoading) {
-    return <Loading />;
-  }
-
-  if (isTeacher) {
-    return <TeacherDashboard></TeacherDashboard>;
-  } else {
-    return <StudentDashboard />;
-  }
+  if (isLoading) return <Loading />;
+  if (profile?.user_type === 'teacher') return <TeacherDashboard />;
+  return <StudentDashboard />;
 };
 
 function App() {

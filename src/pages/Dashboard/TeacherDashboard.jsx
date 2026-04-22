@@ -1,116 +1,88 @@
 import Banner from '@/components/dashboard/Banner';
 import ProfileSidebar from '@/components/dashboard/ProfileSidebar';
 import DashboardContainer from '@/components/dashboard/DashboardContainer';
-import { useName } from '@/hooks/useDashboardData';
-import { useUserId } from '@/hooks/useUserId';
-import { useState } from 'react';
-import { useMemo } from 'react';
+import { useStudentName } from '@/hooks/use-student-name';
+import { useProfilePicture } from '@/hooks/use-profile-picture';
+import { useState, useMemo } from 'react';
 import { onProfileChange as onProfileChangeUtil } from '@/utilities/onProfileChange';
-import { useProfilePicture } from '@/hooks/useDashboardData';
-import { useEffect } from 'react';
 import ClassCode from '@/components/dashboard/ClassCode';
 import AddClassCode from '@/components/dashboard/AddClassCode';
-import { Plus } from 'lucide-react';
+import { Plus, LogOut } from 'lucide-react';
 import supabase from '@/client/supabase';
 import { useNavigate } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
 import Loading from '@/components/Loading';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { classKeys } from '@/lib/query-keys';
+import { useAuthStore } from '@/store/auth-store';
 
-export default function TeacherDashboard () {
-  const userID = useUserId();
-  const [isDataReady, setIsDataReady] = useState(false);
+export default function TeacherDashboard() {
+  const { profile, logout } = useAuthStore();
+  const userID = profile?.uuid ?? null;
   const [showAddClassModal, setShowAddClassModal] = useState(false);
-  const teacherName = useName(userID, isDataReady);
-  const [profilePictureFile, setProfilePictureFile] = useProfilePicture(
-    userID,
-    isDataReady,
-  );
-  const [classCodes, setClassCodes] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [confirmingRemove, setConfirmingRemove] = useState(null);
+  const teacherName = useStudentName(userID);
+  const profilePictureFile = useProfilePicture(userID);
   const memoizedFile = useMemo(
     () => profilePictureFile,
-    [profilePictureFile?.name, profilePictureFile?.size],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [profilePictureFile?.size],
   );
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const handleProfileChange = async (file, fileName = 'profilePicture') => {
     await onProfileChangeUtil(userID, file, fileName);
   };
 
-  useEffect(() => {
-    if (!userID) return;
-    setIsDataReady(true);
-  }, [userID]);
-
-  const handleAddClass = () => {
-    setShowAddClassModal(true);
-  };
-
-  useEffect(() => {
-    async function getClassCodes () {
-      if (!userID) return;
-
+  const { data: classCodes = [], isLoading } = useQuery({
+    queryKey: classKeys.codes(userID ?? ''),
+    queryFn: async () => {
       const { data, error } = await supabase
         .from('teacher_class_code')
         .select('class_code, class_name, class_color')
         .eq('uuid', userID);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!userID,
+  });
 
-      if (error) {
-        return;
-      }
-      setClassCodes(data || []);
-      setIsLoading(false);
-    }
+  const removeMutation = useMutation({
+    mutationFn: async (classCode) => {
+      const { error } = await supabase
+        .from('teacher_class_code')
+        .delete()
+        .eq('class_code', classCode)
+        .eq('uuid', userID);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: classKeys.codes(userID ?? '') });
+    },
+  });
 
-    getClassCodes();
-  }, [userID]);
-  const handleClassCreated = newClass => {
-    setClassCodes(prevCodes => [...prevCodes, newClass]);
+  const handleAddClass = () => setShowAddClassModal(true);
+
+  const handleClassCreated = () => {
+    queryClient.invalidateQueries({ queryKey: classKeys.codes(userID ?? '') });
     setShowAddClassModal(false);
   };
-  const handleRemoveClass = async classCode => {
+
+  const handleRemoveClass = (classCode) => {
     if (confirmingRemove !== classCode) {
       setConfirmingRemove(classCode);
       return;
     }
     setConfirmingRemove(null);
-    try {
-      const { data, error } = await supabase
-        .from('teacher_class_code')
-        .delete()
-        .eq('class_code', classCode)
-        .eq('uuid', userID)
-        .select();
-
-      if (error) {
-        console.error('handleRemoveClass failed', { classCode, error });
-        return;
-      }
-
-      if (data && data.length === 0) {
-        return;
-      }
-
-      setClassCodes(prevCodes =>
-        prevCodes.filter(code => code.class_code !== classCode),
-      );
-    } catch (err) {
-      console.error('handleRemoveClass threw', { classCode, err });
-    }
+    removeMutation.mutate(classCode);
   };
+
   const handleLogout = async () => {
-
-
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      return;
-    }
+    await logout();
     navigate('/');
   };
-  if (!userID || isLoading) {
-    return <Loading />;
-  }
+
+  if (!userID || isLoading) return <Loading />;
 
   return (
     <section id='teacher-dashboard parent-container relative'>

@@ -10,7 +10,6 @@ import QuizProvider from '@/providers/QuizProvider';
 import AudioPlayer from '@/components/quiz/AudioPlayer';
 import audioFile from '@/assets/sounds/quizziz-in-game-theme.mp3';
 import { motion, AnimatePresence } from 'motion/react';
-import { useEffect } from 'react';
 import Loading from '@/components/Loading';
 import {
   QuestionsContext,
@@ -18,11 +17,10 @@ import {
   RemainingTimeContext,
   QuizContext,
 } from '@/providers/QuizContext';
-import {
-  fetchLeaderboard,
-  markQuizAsDone,
-  submitAnswer,
-} from '@/utilities/QuizData';
+import { submitAnswer, markQuizAsDone } from '@/mutations/quiz-mutations';
+import { fetchLeaderboard } from '@/queries/quiz-queries';
+import { useQuery } from '@tanstack/react-query';
+import { quizKeys } from '@/lib/query-keys';
 
 export default function Quiz() {
   return (
@@ -42,9 +40,8 @@ export function QuizPage() {
   const questions = useContext(QuestionsContext);
   const { quizState, setQuizState } = useContext(QuizContext);
 
-  const [leaderboard, setLeaderboard] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [shouldShowPoints, setShouldShowPoints] = useState(false); // try to use context here
+  const [shouldShowPoints, setShouldShowPoints] = useState(false);
 
   function onAnswerSelected(answer, multipleChoice = true) {
     let correctAnswer = questions[quizState.questionIndex].answer;
@@ -117,13 +114,12 @@ export function QuizPage() {
     }
   }
 
-  useEffect(() => {
-    async function fetchAndSetLeaderboard() {
-      setLeaderboard(await fetchLeaderboard(quizId));
-    }
-
-    fetchAndSetLeaderboard();
-  }, [quizId, quizState.status]);
+  const { data: leaderboard = [] } = useQuery({
+    queryKey: quizKeys.leaderboard(quizId),
+    queryFn: () => fetchLeaderboard(quizId),
+    enabled: quizState?.status === 'Done',
+    staleTime: 0,
+  });
 
   const isIdentification =
     questions.length !== quizState.questionIndex &&
