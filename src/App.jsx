@@ -66,10 +66,33 @@ const HamburgerMenuComponent = memo(({ showMenu, onHamburgerClick }) => {
   );
 });
 
+function ProtectedRoute() {
+  const { profile, isLoading } = useAuthStore();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isLoading && !profile) {
+      navigate('/auth/login');
+    }
+  }, [isLoading, profile, navigate]);
+
+  if (isLoading) return <Loading />;
+  if (!profile) return null;
+  return <Outlet />;
+}
+
 function SidebarLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showMenu, setShowMenu] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const { hydrate } = useAuthStore();
+  const hydratedRef = useRef(false);
+
+  // Hydrate auth store once for all sidebar routes
+  if (!hydratedRef.current) {
+    hydratedRef.current = true;
+    hydrate();
+  }
   const handleHamburgerClick = useCallback(
     () => setSidebarOpen((open) => !open),
     [],
@@ -179,20 +202,7 @@ const AuthWrapper = () => {
 };
 
 const ProfileWrapper = () => {
-  const { profile, isLoading, hydrate } = useAuthStore();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    hydrate();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (!isLoading && !profile) {
-      navigate('/auth/login');
-    }
-  }, [isLoading, profile, navigate]);
-
-  if (isLoading) return <Loading />;
+  const { profile } = useAuthStore();
   if (profile?.user_type === 'teacher') return <TeacherDashboard />;
   return <StudentDashboard />;
 };
@@ -221,41 +231,43 @@ function App() {
             />
             <Route path="heartrate" element={<HeartRateCalculator />} />
           </Route>
-          <Route path="lectures" element={<LectureWrapper />}>
-            <Route index element={<Lectures />} />
-            <Route path="lecture/:lessonNumber/" element={<LecturePage />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="lectures" element={<LectureWrapper />}>
+              <Route index element={<Lectures />} />
+              <Route path="lecture/:lessonNumber/" element={<LecturePage />} />
+            </Route>
+            <Route
+              path="physical-fitness-test"
+              element={<PhysicalFitnessWrapper />}
+            >
+              <Route
+                path="parq"
+                element={<PhysicalActivityReadinessQuestionnaire />}
+              />
+              <Route
+                path="test/:testIndex"
+                element={<PhysicalFitnessTestPage />}
+              />
+              <Route
+                path="summary/:testType"
+                element={<PhysicalFitnessTestSummary />}
+              />
+            </Route>
+            <Route path="quizzes">
+              <Route index element={<QuizDashboard />} />
+              <Route path="quiz/:quizId" element={<Quiz />} />
+            </Route>
+            <Route path="dashboard" element={<ProfileWrapper />} />
+            <Route
+              path="dashboard/view-class/:classCode"
+              element={<ViewClass />}
+            />
           </Route>
           <Route
             path="workout-zone/:videoUrl"
             element={<WorkoutZone />}
-          ></Route>
-          <Route path="workout-zone/" element={<WorkoutZone />}></Route>
-          <Route
-            path="physical-fitness-test"
-            element={<PhysicalFitnessWrapper />}
-          >
-            <Route
-              path="parq"
-              element={<PhysicalActivityReadinessQuestionnaire />}
-            />
-            <Route
-              path="test/:testIndex"
-              element={<PhysicalFitnessTestPage />}
-            />
-            <Route
-              path="summary/:testType"
-              element={<PhysicalFitnessTestSummary />}
-            ></Route>
-          </Route>
-          <Route path="quizzes">
-            <Route index element={<QuizDashboard />} />
-            <Route path="quiz/:quizId" element={<Quiz />} />
-          </Route>
-          <Route path="dashboard" element={<ProfileWrapper />}></Route>
-          <Route
-            path="dashboard/view-class/:classCode"
-            element={<ViewClass />}
-          ></Route>
+          />
+          <Route path="workout-zone/" element={<WorkoutZone />} />
           <Route path="*" element={<NotFound />} />
         </Route>
         <Route path="auth" element={<AuthWrapper />}>
