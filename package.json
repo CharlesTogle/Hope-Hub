@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.11",
@@ -49,6 +50,8 @@
     "globals": "^15.15.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.1.2",
-    "vite": "^6.2.0"
+    "typescript": "^6.0.3",
+    "vite": "^6.2.0",
+    "vite-plugin-checker": "^0.13.0"
   }
 }
