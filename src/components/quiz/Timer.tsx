@@ -1,26 +1,30 @@
 import { useEffect, useState } from 'react';
 import TimerIcon from '@/assets/icons/timer_quiz.png';
-import { useRemainingTimeRef } from '@/providers/QuizContext';
 import { updateRemainingTime } from '@/mutations/quiz-mutations';
 import { useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
+import { useQuizStore } from '@/store/quiz-store';
 
 interface TimerProps {
   duration: number;
-  color: string;
+  color: 'red';
   onTimerEnd: () => void;
 }
+
+const colorClassNames: Record<TimerProps['color'], string> = {
+  red: 'text-red',
+};
 
 export default function Timer({ duration, color, onTimerEnd }: TimerProps) {
   const { quizId } = useParams();
   const [time, setTime] = useState(0);
   const [hasTimerEnded, setHasTimerEnded] = useState(false);
-  const remainingTimeRef = useRemainingTimeRef();
-  remainingTimeRef.current = time;
+  const setRemainingTime = useQuizStore((state) => state.setRemainingTime);
 
   useEffect(() => {
     const startTime = Date.now();
     setTime(duration);
+    setRemainingTime(duration);
 
     const interval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
@@ -28,14 +32,17 @@ export default function Timer({ duration, color, onTimerEnd }: TimerProps) {
       if (elapsed > duration) {
         clearInterval(interval);
         setHasTimerEnded(true);
-      } else setTime(remainingTime);
+      } else {
+        setTime(remainingTime);
+        setRemainingTime(remainingTime);
+      }
       if (quizId) {
         void updateRemainingTime(quizId, remainingTime);
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [duration, quizId]);
+  }, [duration, quizId, setRemainingTime]);
 
   useEffect(() => {
     if (!hasTimerEnded) return;
@@ -68,7 +75,7 @@ export default function Timer({ duration, color, onTimerEnd }: TimerProps) {
           repeat: Infinity,
           ease: 'easeInOut',
         }}
-        className={`text-base font-content text-${color}`}
+        className={`text-base font-content ${colorClassNames[color]}`}
       >
         {time} {time > 1 ? 'seconds' : 'second'}
       </motion.span>

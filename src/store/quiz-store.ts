@@ -11,6 +11,7 @@ interface QuizStoreState {
   setQuizState: (s: QuizState | null) => void;
   setIdentificationAnswer: (a: string) => void;
   setRemainingTime: (t: number) => void;
+  initializeQuiz: (questions: QuizQuestion[], quizState: QuizState) => void;
   reset: () => void;
 }
 
@@ -28,5 +29,12 @@ export const useQuizStore = create<QuizStoreState>((set) => ({
   setQuizState: (quizState) => set({ quizState }),
   setIdentificationAnswer: (identificationAnswer) => set({ identificationAnswer }),
   setRemainingTime: (remainingTime) => set({ remainingTime }),
+  initializeQuiz: (questions, quizState) =>
+    set({
+      questions,
+      quizState,
+      identificationAnswer: '',
+      remainingTime: quizState.remainingTime,
+    }),
   reset: () => set(initialState),
 }));

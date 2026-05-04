@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { motion } from 'motion/react';
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 
@@ -13,8 +12,6 @@ export default function CustomButton({
   children,
   ...props
 }: CustomButtonProps) {
-  const [isDisabled, setIsDisabled] = useState(false);
-
   return (
     <motion.button
       variants={{
@@ -39,11 +36,8 @@ export default function CustomButton({
             }
       }
       className={`${className} cursor-pointer`}
-      onClick={(event) => {
-        setIsDisabled(true);
-        onClick?.(event);
-      }}
-      disabled={isDisabled || props.disabled}
+      onClick={onClick}
+      disabled={props.disabled}
       {...props}
     >
       {children}
