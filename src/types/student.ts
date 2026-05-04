@@ -8,6 +8,26 @@ export interface ClassCode {
   class_color: string;
 }
 
+export interface ProgressStats {
+  completed: number;
+  pending: number;
+  incomplete: number;
+  total: number;
+}
+
+export interface DashboardQuizRow {
+  quiz_id: number;
+  status: string;
+  score?: number;
+  total_items?: number;
+  date_taken?: string;
+}
+
+export interface StudentPftStatus {
+  preFinished: boolean;
+  postFinished: boolean;
+}
+
 export interface RawStudentQuizData {
   quiz_number: number;
   status: DbQuizStatus;

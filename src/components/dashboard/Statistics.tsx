@@ -14,11 +14,39 @@ interface StatisticsProps {
   type: string;
 }
 
+type StatColor = 'green' | 'primary-yellow' | 'red';
+
 export default function Statistics({ progress, type }: StatisticsProps) {
   let percentage = Math.round((progress.completed / progress.total) * 100);
   if (isNaN(percentage)) percentage = 0;
   const chartData = [{ name: 'Progress', value: percentage, fill: 'green' }];
   const isMobile = useMobile();
+  const statColorClassNames: Record<StatColor, string> = {
+    green: 'text-green',
+    'primary-yellow': 'text-primary-yellow',
+    red: 'text-red',
+  } as const;
+  const progressRows: Array<{
+    label: string;
+    value: number;
+    color: StatColor;
+  }> = [
+    {
+      label: 'Completed',
+      value: progress.completed,
+      color: 'green',
+    },
+    {
+      label: 'Pending',
+      value: progress.pending,
+      color: 'primary-yellow',
+    },
+    {
+      label: 'Incomplete',
+      value: progress.incomplete,
+      color: 'red',
+    },
+  ];
 
   return (
     <div id='statistics' className='w-full'>
@@ -59,20 +87,11 @@ export default function Statistics({ progress, type }: StatisticsProps) {
         id='count'
         className='flex flex-col items-start lg:pl-15 gap-5 text-lg py-5 pl-5 lg:py-10'
       >
-        {[
-          {
-            label: 'Completed',
-            value: progress.completed,
-            color: 'green',
-          },
-          {
-            label: 'Pending',
-            value: progress.pending,
-            color: 'primary-yellow',
-          },
-          { label: 'Incomplete', value: progress.incomplete, color: 'red' },
-        ].map(({ label, value, color }) => (
-          <p key={label} className={`text-${color} text-base font-semibold `}>
+        {progressRows.map(({ label, value, color }) => (
+          <p
+            key={label}
+            className={`${statColorClassNames[color]} text-base font-semibold `}
+          >
             <span className='mr-7 text-base lg:text-lg font-bold!'>
               {value}
             </span>

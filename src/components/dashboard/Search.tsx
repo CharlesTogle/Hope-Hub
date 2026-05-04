@@ -1,11 +1,13 @@
 import SearchIcon from '@/assets/icons/search_icon.png';
 
 interface SearchProps {
+  value?: string;
   onSearch?: (value: string) => void;
   placeholder?: string;
 }
 
 export default function Search({
+  value,
   onSearch,
   placeholder = 'Search Student Name',
 }: SearchProps) {
@@ -20,6 +22,7 @@ export default function Search({
     <>
       <input
         type='text'
+        value={value}
         placeholder={placeholder}
         className='py-2 rounded-lg border-1 w-full lg:py-0 border-black lg:h-1/2 pl-3'
         onChange={handleInputChange}

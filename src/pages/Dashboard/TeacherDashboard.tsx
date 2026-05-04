@@ -1,25 +1,26 @@
 import Banner from '@/components/dashboard/Banner';
 import ProfileSidebar from '@/components/dashboard/ProfileSidebar';
 import DashboardContainer from '@/components/dashboard/DashboardContainer';
-import { useStudentName } from '@/hooks/use-student-name';
 import { useProfilePicture } from '@/hooks/use-profile-picture';
 import { useEffect, useMemo } from 'react';
 import { onProfileChange as onProfileChangeUtil } from '@/utilities/onProfileChange';
 import ClassCode from '@/components/dashboard/ClassCode';
 import AddClassCode from '@/components/dashboard/AddClassCode';
 import { Plus, LogOut } from 'lucide-react';
-import supabase from '@/client/supabase';
 import { useNavigate } from 'react-router-dom';
 import Loading from '@/components/Loading';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { classKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useUIStore } from '@/store/ui-store';
+import { removeTeacherClassCode } from '@/mutations/class-mutations';
+import { fetchTeacherClassCodes } from '@/queries/dashboard-queries';
 import type { ClassCode as ClassCodeData } from '@/types/student';
 
 export default function TeacherDashboard() {
   const { profile, logout } = useAuthStore();
   const userID = profile?.uuid ?? null;
+  const teacherName = profile?.full_name ?? '';
   const showAddClassModal = useUIStore((state) => state.teacherDashboard.showAddClassModal);
   const confirmingRemove = useUIStore(
     (state) => state.teacherDashboard.confirmingRemoveClassCode,
@@ -29,7 +30,6 @@ export default function TeacherDashboard() {
     (state) => state.setTeacherConfirmingRemoveClassCode,
   );
   const resetTeacherDashboard = useUIStore((state) => state.resetTeacherDashboard);
-  const teacherName = useStudentName(userID);
   const profilePictureFile = useProfilePicture(userID);
   const memoizedFile = useMemo(
     () => profilePictureFile,
@@ -46,30 +46,12 @@ export default function TeacherDashboard() {
 
   const { data: classCodes = [], isLoading } = useQuery<ClassCodeData[]>({
     queryKey: classKeys.codes(userID ?? ''),
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('teacher_class_code')
-        .select('class_code, class_name, class_color')
-        .eq('uuid', userID);
-      if (error) throw error;
-      return (data ?? []).map((row) => ({
-        class_code: row.class_code ?? '',
-        class_name: row.class_name ?? '',
-        class_color: row.class_color ?? '',
-      }));
-    },
+    queryFn: () => fetchTeacherClassCodes(userID ?? ''),
     enabled: !!userID,
   });
 
   const removeMutation = useMutation({
-    mutationFn: async (classCode: string) => {
-      const { error } = await supabase
-        .from('teacher_class_code')
-        .delete()
-        .eq('class_code', classCode)
-        .eq('uuid', userID);
-      if (error) throw error;
-    },
+    mutationFn: (classCode: string) => removeTeacherClassCode(userID ?? '', classCode),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: classKeys.codes(userID ?? '') });
     },

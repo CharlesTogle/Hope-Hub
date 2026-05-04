@@ -1,0 +1,182 @@
+import supabase from '@/client/supabase';
+import type { ClassCode, DashboardQuizRow, ProgressStats, StudentPftStatus } from '@/types/student';
+
+export async function fetchLectureProgressSummary(
+  userId: string,
+): Promise<ProgressStats> {
+  const { data, error } = await supabase
+    .from('lecture_progress')
+    .select('lecture_progress')
+    .eq('uuid', userId)
+    .single();
+
+  if (error) {
+    return { completed: 0, incomplete: 0, pending: 0, total: 0 };
+  }
+
+  const lectures = data.lecture_progress || [];
+  let completed = 0;
+  let incomplete = 0;
+  let pending = 0;
+
+  lectures.forEach((item: { status: string }) => {
+    if (item.status === 'Done') completed++;
+    else if (item.status === 'Incomplete') incomplete++;
+    else if (item.status === 'Pending') pending++;
+  });
+
+  return { completed, incomplete, pending, total: lectures.length };
+}
+
+export async function fetchQuizCount(): Promise<number> {
+  const { count } = await supabase
+    .from('quiz')
+    .select('*', { count: 'exact', head: true });
+
+  return count ?? 0;
+}
+
+export async function fetchStudentQuizProgressSummary(
+  userId: string,
+  quizCount: number,
+): Promise<ProgressStats> {
+  const { data, error } = await supabase
+    .from('quiz_progress')
+    .select('status')
+    .eq('user_id', userId);
+
+  if (error) {
+    return { completed: 0, incomplete: 0, pending: 0, total: quizCount };
+  }
+
+  let completed = 0;
+  let pending = 0;
+
+  data.forEach((item) => {
+    if (item.status === 'Done') completed++;
+    else if (item.status === 'Pending') pending++;
+  });
+
+  return {
+    completed,
+    incomplete: quizCount - completed - pending,
+    pending,
+    total: quizCount,
+  };
+}
+
+export async function fetchStudentQuizRows(
+  userId: string,
+  quizCount: number,
+): Promise<DashboardQuizRow[]> {
+  const { data, error } = await supabase
+    .from('quiz_progress')
+    .select('quiz_id, status, score, total_items, date_taken')
+    .eq('user_id', userId);
+
+  if (error) {
+    return [];
+  }
+
+  const rows: DashboardQuizRow[] = [];
+
+  for (let i = 1; i <= quizCount; i++) {
+    const quiz = data?.find((item) => item.quiz_id === i);
+    rows.push(
+      quiz ?? {
+        quiz_id: i,
+        status: 'Incomplete',
+        score: undefined,
+        total_items: undefined,
+        date_taken: undefined,
+      },
+    );
+  }
+
+  return rows;
+}
+
+export async function fetchStudentClassCode(
+  userId: string,
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('student_class_code')
+    .select('class_code')
+    .eq('uuid', userId)
+    .single();
+
+  if (error) {
+    return null;
+  }
+
+  return data?.class_code ?? null;
+}
+
+export async function fetchStudentPftStatus(
+  userId: string,
+): Promise<StudentPftStatus> {
+  const { data, error } = await supabase
+    .from('physical_fitness_test')
+    .select('pre_physical_fitness_test, post_physical_fitness_test')
+    .eq('uuid', userId)
+    .single();
+
+  if (error) {
+    return { preFinished: false, postFinished: false };
+  }
+
+  const checkFinished = (column: { finishedTestIndex?: number[] } | null) => {
+    const indexes = column?.finishedTestIndex;
+    return !!(indexes && indexes.includes(indexes.length - 1));
+  };
+
+  return {
+    preFinished: checkFinished(data.pre_physical_fitness_test),
+    postFinished: checkFinished(data.post_physical_fitness_test),
+  };
+}
+
+export async function fetchTeacherClassCodes(
+  teacherId: string,
+): Promise<ClassCode[]> {
+  const { data, error } = await supabase
+    .from('teacher_class_code')
+    .select('class_code, class_name, class_color')
+    .eq('uuid', teacherId);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).map((row) => ({
+    class_code: row.class_code ?? '',
+    class_name: row.class_name ?? '',
+    class_color: row.class_color ?? '',
+  }));
+}
+
+export async function fetchTeacherClassOwnership(
+  teacherId: string,
+  classCode: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('teacher_class_code')
+    .select('class_code')
+    .eq('uuid', teacherId)
+    .eq('class_code', classCode)
+    .single();
+
+  return !error && !!data;
+}
+
+export async function fetchQuizNumbers(): Promise<number[]> {
+  const { data, error } = await supabase.from('quiz').select('quiz_number');
+
+  if (error) {
+    return [];
+  }
+
+  return (data ?? [])
+    .map((item) => item.quiz_number)
+    .filter((quizNumber): quizNumber is number => quizNumber !== null);
+}

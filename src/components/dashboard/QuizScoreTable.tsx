@@ -33,7 +33,7 @@ export default function QuizScoreTable({ quizData }: QuizScoreTableProps) {
               className="font-semibold h-10 text-xs lg:text-base md:text-base"
             >
               <td>
-                {data.quiz_id === 4 ? `Quiz PFT` : `Quiz No.${data.quiz_id}`}
+                {data.quiz_id === 0 ? 'Quiz PFT' : `Quiz No.${data.quiz_id}`}
               </td>
               <td
                 className={

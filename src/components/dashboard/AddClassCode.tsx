@@ -3,8 +3,8 @@ import FormHeading from '../auth/FormHeading';
 import FormInput from '../auth/FormInput';
 import FormButton from '../auth/FormButton';
 import { useState, useEffect, useRef } from 'react';
-import supabase from '@/client/supabase';
 import { useAuthStore } from '@/store/auth-store';
+import { createTeacherClassCode } from '@/mutations/class-mutations';
 import type { ClassCode } from '@/types/student';
 
 interface ColorPickerProps {
@@ -71,49 +71,6 @@ export default function AddClassCode({
   const formRef = useRef<HTMLDivElement | null>(null);
   const { userId: userID } = useAuthStore();
 
-  function generateClassCode(): string {
-    const CHARS =
-      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-
-    let code = '';
-    for (let i = 0; i < 6; i++) {
-      code += CHARS.charAt(Math.floor(Math.random() * CHARS.length));
-    }
-    return code;
-  }
-
-  async function isClassCodeUnique(code: string): Promise<boolean> {
-    const { data, error } = await supabase
-      .from('teacher_class_code')
-      .select('class_code')
-      .eq('class_code', code);
-    if (error) {
-      return false;
-    }
-
-    return (data?.length ?? 0) === 0;
-  }
-
-  async function generateUniqueClassCode(): Promise<string> {
-    let code = '';
-    let isUnique = false;
-    let attempts = 0;
-    const maxAttempts = 10;
-
-    while (!isUnique && attempts < maxAttempts) {
-      code = generateClassCode();
-      isUnique = await isClassCodeUnique(code);
-      attempts++;
-    }
-
-    if (!isUnique) {
-      throw new Error(
-        'Unable to generate unique class code. Please try again.',
-      );
-    }
-    return code;
-  }
-
   function validateClassName(name: string): string | null {
     const trimmedName = name.trim();
     if (!trimmedName) {
@@ -145,26 +102,13 @@ export default function AddClassCode({
     setError('');
 
     try {
-      const uniqueClassCode = await generateUniqueClassCode();
-      const { error: insertError } = await supabase
-        .from('teacher_class_code')
-        .insert({
-          uuid: userID,
-          class_name: trimmedClassName,
-          class_code: uniqueClassCode,
-          class_color: classColor,
-          created_at: new Date().toISOString(),
-        });
+      const newClassCode = await createTeacherClassCode(
+        userID,
+        trimmedClassName,
+        classColor,
+      );
 
-      if (insertError) {
-        throw new Error(`Failed to create class: ${insertError.message}`);
-      }
-
-      onAdd({
-        class_name: trimmedClassName,
-        class_code: uniqueClassCode,
-        class_color: classColor,
-      });
+      onAdd(newClassCode);
       setModalShown(false);
       setClassName('');
       setClassColor('FFD700');

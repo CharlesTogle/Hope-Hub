@@ -1,11 +1,8 @@
 import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import Search from '@/components/dashboard/Search';
 import Table from '@/components/dashboard/ViewClass/Table';
-import { Lessons } from '@/utilities/Lessons';
 import { getStudentsByClassCode } from '@/services/getStudentDataByClassCode';
 import { cleanStudentData } from '@/services/cleanStudentData';
-import supabase from '@/client/supabase';
 import ErrorMessage from '@/components/utilities/ErrorMessage';
 import Loading from '@/components/Loading';
 import {
@@ -13,80 +10,28 @@ import {
   downloadExcel,
   generateFilename,
 } from '@/utilities/exportStudentExcel';
-import { Download } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { classKeys, quizKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useUIStore } from '@/store/ui-store';
+import ClassViewHeader from '@/components/dashboard/ViewClass/ClassViewHeader';
+import ClassViewFilters from '@/components/dashboard/ViewClass/ClassViewFilters';
+import {
+  buildQuizFilterItems,
+  filterStudentsByLectureStatus,
+  filterStudentsBySearchTerm,
+  getTableHeadings,
+  lecturesData,
+  sortStudentsByQuizAverage,
+  viewClassFilters,
+  type FilterItem,
+  type FilterValue,
+} from '@/lib/view-class';
+import {
+  fetchQuizNumbers,
+  fetchTeacherClassOwnership,
+} from '@/queries/dashboard-queries';
 import type { CleanedStudent } from '@/types/student';
-
-interface LectureFilterItem {
-  Type: 'Lecture';
-  LessonNumber: number;
-}
-
-interface QuizFilterItem {
-  Type: 'Quiz';
-  QuizNumber: number;
-}
-
-type FilterItem = LectureFilterItem | QuizFilterItem;
-type FilterValue = 'All' | 'Lecture' | 'Quiz';
-type LectureSubFilterValue = 'all' | 'done' | 'pending' | 'incomplete';
-type QuizSubFilterValue = 'none' | 'ascending' | 'descending';
-
-// Static data — derived from static import at module level
-const lecturesData: LectureFilterItem[] = Lessons.map((item) => ({
-  Type: 'Lecture',
-  LessonNumber: item.key,
-}));
-
-const getTableHeadings = (
-  activeFilter: FilterValue,
-  data: FilterItem[],
-): string[] => {
-  const headings = ['Name', 'Email'];
-  if (activeFilter === 'Lecture') {
-    data.forEach((entry) => {
-      if (entry.Type === 'Lecture') {
-        headings.push(`Lesson ${entry.LessonNumber}`);
-      }
-    });
-  } else if (activeFilter === 'Quiz') {
-    data.forEach((entry) => {
-      if (entry.Type === 'Quiz') {
-        headings.push(`Quiz ${entry.QuizNumber}`);
-      }
-    });
-  } else {
-    data.forEach((entry) => {
-      if (entry.Type === 'Lecture') headings.push(`Lesson ${entry.LessonNumber}`);
-      else if (entry.Type === 'Quiz') headings.push(`Quiz ${entry.QuizNumber}`);
-    });
-    headings.push('Pre Test Record', 'Post Test Record');
-  }
-  return headings;
-};
-
-const Filters: FilterValue[] = ['All', 'Lecture', 'Quiz'];
-const lectureSubFilterOptions: ReadonlyArray<{
-  value: LectureSubFilterValue;
-  label: string;
-}> = [
-  { value: 'all', label: 'All' },
-  { value: 'done', label: 'Done' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'incomplete', label: 'Incomplete' },
-];
-
-const quizSubFilterOptions: ReadonlyArray<{
-  value: QuizSubFilterValue;
-  label: string;
-}> = [
-  { value: 'none', label: 'Default' },
-  { value: 'ascending', label: 'Low to High' },
-  { value: 'descending', label: 'High to Low' },
-];
 
 export default function ViewClass () {
   const params = useParams<{ classCode: string }>();
@@ -110,32 +55,17 @@ export default function ViewClass () {
 
   useEffect(() => resetViewClass, [resetViewClass]);
 
-  const { data: rawQuizData = [], isLoading: quizLoading } = useQuery<
-    Array<{ quiz_number: number | null }>
-  >({
+  const { data: quizNumbers = [], isLoading: quizLoading } = useQuery<number[]>({
     queryKey: quizKeys.list(),
-    queryFn: async () => {
-      const { data, error } = await supabase.from('quiz').select('quiz_number');
-      return error ? [] : data;
-    },
+    queryFn: fetchQuizNumbers,
   });
 
-  const quizData = rawQuizData
-    .filter((item): item is { quiz_number: number } => item.quiz_number !== null)
-    .map((item) => ({ Type: 'Quiz' as const, QuizNumber: item.quiz_number }));
+  const quizData = buildQuizFilterItems(quizNumbers);
   const combinedData = [...lecturesData, ...quizData];
 
   const { data: hasOwnership = false, isLoading: ownershipLoading } = useQuery({
     queryKey: ['class', 'ownership', userId ?? '', classCode ?? ''],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('teacher_class_code')
-        .select('class_code')
-        .eq('uuid', userId)
-        .eq('class_code', classCode)
-        .single();
-      return !error && !!data;
-    },
+    queryFn: () => fetchTeacherClassOwnership(userId ?? '', classCode ?? ''),
     enabled: !!userId && !!classCode,
   });
 
@@ -156,54 +86,26 @@ export default function ViewClass () {
   const headings = getTableHeadings(activeFilter, activeData);
 
   // Compute activeStudentData inline — no state
-  const lessonKeys = (student: CleanedStudent): string[] =>
-    Object.keys(student).filter((key) => key.startsWith('Lesson'));
-
   let filteredStudentData = defaultStudentData;
 
-  if (activeFilter === 'Lecture' && lectureSubFilter !== 'all') {
-    if (lectureSubFilter === 'done') {
-      filteredStudentData = defaultStudentData.filter((student) =>
-        lessonKeys(student).every((key) => student[key] === 'Done'),
-      );
-    } else if (lectureSubFilter === 'pending') {
-      filteredStudentData = defaultStudentData.filter((student) =>
-        lessonKeys(student).some((key) => student[key] === 'Pending'),
-      );
-    } else if (lectureSubFilter === 'incomplete') {
-      filteredStudentData = defaultStudentData.filter((student) =>
-        lessonKeys(student).some((key) => student[key] === 'Incomplete'),
-      );
-    }
-  }
-
-  if (activeFilter === 'Quiz' && quizSubFilter !== 'none') {
-    const avgScore = (student: CleanedStudent): number => {
-      let total = 0, count = 0;
-      Object.keys(student).forEach((key) => {
-        if (key.startsWith('Quiz') && student[key] && student[key] !== 'Pending') {
-          const value = student[key];
-          if (typeof value === 'string') {
-            const match = value.match(/(\d+)\/(\d+)/);
-            if (match) {
-              total += parseInt(match[1], 10) / parseInt(match[2], 10);
-              count++;
-            }
-          }
-        }
-      });
-      return count > 0 ? total / count : 0;
-    };
-    filteredStudentData = [...filteredStudentData].sort((a, b) =>
-      quizSubFilter === 'ascending' ? avgScore(a) - avgScore(b) : avgScore(b) - avgScore(a),
+  if (activeFilter === 'Lecture') {
+    filteredStudentData = filterStudentsByLectureStatus(
+      filteredStudentData,
+      lectureSubFilter,
     );
   }
 
-  const activeStudentData = searchTerm.trim()
-    ? filteredStudentData.filter((student) =>
-        student.studentName?.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-    : filteredStudentData;
+  if (activeFilter === 'Quiz') {
+    filteredStudentData = sortStudentsByQuizAverage(
+      filteredStudentData,
+      quizSubFilter,
+    );
+  }
+
+  const activeStudentData = filterStudentsBySearchTerm(
+    filteredStudentData,
+    searchTerm,
+  );
 
   const handleFilterChange = (filter: FilterValue) => {
     setActiveFilter(filter);
@@ -242,101 +144,24 @@ export default function ViewClass () {
     <section className='parent-container' id='view-class'>
       <div className='content-container w-[90%]!'>
         <div className='self-start w-full'>
-          <div className='flex items-center justify-between flex-wrap gap-4'>
-            <div>
-              <p className='font-heading-small text-3xl text-primary-blue self-start'>
-                Class Code: <span className='text-black'>{classCode}</span>
-              </p>
-              <hr className='h-0 w-50 mt-3 border-1 border-primary-yellow' />
-            </div>
-            <button
-              onClick={handleExportClass}
-              disabled={isExporting || defaultStudentData.length === 0}
-              className='bg-primary-blue text-white px-6 py-2 rounded-md font-content text-sm flex items-center gap-2 hover:brightness-90 disabled:brightness-75 disabled:cursor-not-allowed transition-all'
-            >
-              <Download className='w-4 h-4' />
-              {isExporting ? 'Exporting...' : 'Export Class Data'}
-            </button>
-          </div>
+          <ClassViewHeader
+            classCode={classCode}
+            isExporting={isExporting}
+            isDisabled={defaultStudentData.length === 0}
+            onExport={handleExportClass}
+          />
         </div>{' '}
-        <div
-          className='self-start mt-5 flex w-full justify-between flex-col lg:flex-row gap-4'
-          id='options'
-        >
-          <div className='flex flex-col gap-3'>
-            <div
-              id='buttons'
-              className='rounded-sm bg-secondary-dark-blue w-fit h-fit flex items-center flex-nowrap lg:w-fit'
-            >
-              {Filters.map((filter, index) => (
-                <button
-                  key={filter}
-                  onClick={() => handleFilterChange(filter)}
-                  className={
-                    `text-white text-center font-content py-2 min-w-1/8 px-5 text-sm lg:w-auto lg:px-5 transition-colors sticky top-0 ${
-                      index === 0 ? 'rounded-l-sm' : ''
-                    } ${index === Filters.length - 1 ? 'rounded-r-sm' : ''} ` +
-                    (filter === activeFilter
-                      ? 'bg-primary-yellow text-secondary-dark-blue'
-                      : 'bg-secondary-dark-blue hover:bg-gray-700')
-                  }
-                >
-                  {filter}
-                </button>
-              ))}
-            </div>
-            <div className='h-10 flex items-center'>
-              {activeFilter === 'Lecture' && (
-                <div className='flex items-center gap-2 animate-fadeIn'>
-                  <span className='text-sm font-content text-gray-600'>Status:</span>
-                  <div className='flex bg-gray-100 rounded-md p-1'>
-                    {lectureSubFilterOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => setLectureSubFilter(option.value)}
-                        className={`px-3 py-1 text-xs font-content rounded transition-colors ${
-                          lectureSubFilter === option.value
-                            ? 'bg-secondary-dark-blue text-white'
-                            : 'text-gray-600 hover:bg-gray-200'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {activeFilter === 'Quiz' && (
-                <div className='flex items-center gap-2 animate-fadeIn'>
-                  <span className='text-sm font-content text-gray-600'>Sort by score:</span>
-                  <div className='flex bg-gray-100 rounded-md p-1'>
-                    {quizSubFilterOptions.map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => setQuizSubFilter(option.value)}
-                        className={`px-3 py-1 text-xs font-content rounded transition-colors ${
-                          quizSubFilter === option.value
-                            ? 'bg-secondary-dark-blue text-white'
-                            : 'text-gray-600 hover:bg-gray-200'
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {activeFilter === 'All' && (
-                <div className='flex items-center gap-2 animate-fadeIn'>
-                  <span className='text-sm font-content text-gray-500 italic'>Showing all content</span>
-                </div>
-              )}
-            </div>
-          </div>{' '}
-          <div id='search' className='w-full lg:w-[40%] flex items-center gap-3'>
-            <Search onSearch={setSearchTerm} />
-          </div>
-        </div>{' '}
+        <ClassViewFilters
+          activeFilter={activeFilter}
+          lectureSubFilter={lectureSubFilter}
+          quizSubFilter={quizSubFilter}
+          searchTerm={searchTerm}
+          onFilterChange={handleFilterChange}
+          onLectureSubFilterChange={setLectureSubFilter}
+          onQuizSubFilterChange={setQuizSubFilter}
+          onSearchTermChange={setSearchTerm}
+          filters={viewClassFilters}
+        />{' '}
         <div className='w-full mt-10'>
           <div className='overflow-x-auto'>
             <Table headings={headings} content={activeStudentData} />

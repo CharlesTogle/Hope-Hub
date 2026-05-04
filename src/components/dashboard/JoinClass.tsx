@@ -3,7 +3,10 @@ import FormHeading from '../auth/FormHeading';
 import FormInput from '../auth/FormInput';
 import FormButton from '../auth/FormButton';
 import { useState, useEffect, useRef } from 'react';
-import supabase from '@/client/supabase';
+import {
+  doesTeacherClassCodeExist,
+  isValidClassCode,
+} from '@/mutations/class-mutations';
 
 interface JoinClassProps {
   tempClassCode: string;
@@ -21,36 +24,25 @@ export default function JoinClass({
   const [error, setError] = useState('');
   const formRef = useRef<HTMLDivElement | null>(null);
 
-  function isValidClassCode(code: string): boolean {
-    return code.length === 6;
-  }
-
-  async function doesClassCodeExist(code: string): Promise<boolean> {
-    const { count, error: fetchError } = await supabase
-      .from('teacher_class_code')
-      .select('*', { count: 'exact', head: true })
-      .eq('class_code', code);
-
-    if (fetchError) {
-      setError('Error checking class code. Please try again.');
-      return false;
-    }
-
-    return (count ?? 0) > 0;
-  }
-
   const handleJoin = async () => {
     if (!isValidClassCode(tempClassCode)) {
       setError('A class code should contains 6 characters');
       return;
     }
-    const exists = await doesClassCodeExist(tempClassCode);
-    if (!exists) {
-      setError('Class code does not exist. Please check and try again.');
-      return;
+
+    try {
+      const exists = await doesTeacherClassCodeExist(tempClassCode);
+
+      if (!exists) {
+        setError('Class code does not exist. Please check and try again.');
+        return;
+      }
+
+      setError('');
+      handleJoinClass();
+    } catch {
+      setError('Error checking class code. Please try again.');
     }
-    setError('');
-    handleJoinClass();
   };
 
   useEffect(() => {
