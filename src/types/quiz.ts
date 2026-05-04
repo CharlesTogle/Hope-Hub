@@ -1,4 +1,5 @@
-export type QuizStatus = 'Pending' | 'Done' | 'Incomplete' | 'Locked';
+export type DbQuizStatus = 'All' | 'Done' | 'Pending' | 'Locked';
+export type QuizStatus = DbQuizStatus | 'Incomplete';
 
 export interface QuizChoice {
   text: string;
@@ -26,7 +27,7 @@ export interface QuizState {
   score: number;
   points: number;
   currentQuestionPoints: number;
-  status: 'Pending' | 'Done';
+  status: Extract<DbQuizStatus, 'Pending' | 'Done'>;
   remainingTime: number;
   questionsAnswered: AnsweredQuestion[];
 }
@@ -42,12 +43,12 @@ export interface QuizProgressRow {
   id?: number;
   user_id: string;
   quiz_id: number;
-  question_index: number;
-  score: number;
-  points: number;
-  status: 'Pending' | 'Done';
-  remaining_time: number;
-  questions_answered: AnsweredQuestion[];
+  question_index: number | null;
+  score: number | null;
+  points: number | null;
+  status: DbQuizStatus;
+  remaining_time: number | null;
+  questions_answered: AnsweredQuestion[] | null;
   questions_shuffled: QuizQuestion[] | null;
   start_time: string | null;
   end_time: string | null;
@@ -55,13 +56,17 @@ export interface QuizProgressRow {
   date_taken: string | null;
 }
 
+export interface QuizQuestionSet {
+  questions: QuizQuestion[];
+}
+
 export interface QuizRow {
   id: number;
-  title: string;
-  lecture_title: string;
+  title: string | null;
+  lecture_title: string | null;
   description: string;
-  questions: { questions: QuizQuestion[] };
-  quiz_number: number;
+  questions: QuizQuestionSet;
+  quiz_number: number | null;
 }
 
 export interface QuizWithProgress extends QuizRow {

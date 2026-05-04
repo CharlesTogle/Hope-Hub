@@ -21,7 +21,7 @@ export async function submitAnswer(quizState: QuizState): Promise<PostgrestError
       score,
       points,
       remaining_time: remainingTime,
-      questions_answered: questionsAnswered as unknown as never,
+      questions_answered: questionsAnswered,
     })
     .eq('user_id', user.id)
     .eq('quiz_id', quizId);

@@ -6,7 +6,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import Footer from '@/components/Footer';
 import Loading from '@/components/Loading';
 import { getBMI } from '@/services/Calculations';
-import { getBMICategory } from './HealthCalculators/BMICalculator';
+import { getBMICategory } from '@/utilities/bmi-category';
 import { useQuery } from '@tanstack/react-query';
 import { pftKeys, profileKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';

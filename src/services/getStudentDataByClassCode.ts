@@ -1,0 +1,15 @@
+import supabase from '@/client/supabase';
+import type { RawStudentData } from '@/types/student';
+
+export async function getStudentsByClassCode(
+  classCode: string,
+): Promise<RawStudentData[]> {
+  const { data, error } = await supabase.rpc('retrieve_students_by_class', {
+    class_code_input: classCode,
+  });
+
+  if (error) {
+    return [];
+  }
+  return data ?? [];
+}

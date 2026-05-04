@@ -1,4 +1,4 @@
-export type UserType = 'student' | 'teacher';
+export type UserType = 'admin' | 'student' | 'teacher';
 
 export interface Profile {
   uuid: string;

@@ -1,6 +1,13 @@
 import supabase from '@/client/supabase';
 import { shuffleArray } from '@/utilities/utils';
-import type { QuizQuestion, QuizProgressRow, QuizRow } from '@/types/quiz';
+import type {
+  LeaderboardEntry,
+  QuizProgressRow,
+  QuizQuestion,
+  QuizQuestionSet,
+  QuizRow,
+  QuizWithProgress,
+} from '@/types/quiz';
 import type { User } from '@supabase/supabase-js';
 
 export async function getCurrentUser(): Promise<User> {
@@ -15,10 +22,10 @@ export async function fetchQuizzesDefault(): Promise<QuizRow[]> {
     .select('id, title, lecture_title, description, questions, quiz_number')
     .order('id', { ascending: true });
   if (error) throw error;
-  return (data ?? []) as unknown as QuizRow[];
+  return (data ?? []) as QuizRow[];
 }
 
-export async function fetchQuizzesOfUser(user: User): Promise<QuizRow[]> {
+export async function fetchQuizzesOfUser(user: User): Promise<QuizWithProgress[]> {
   let { data: pftData } = await supabase
     .from('physical_fitness_test')
     .select('*')
@@ -54,10 +61,10 @@ export async function fetchQuizzesOfUser(user: User): Promise<QuizRow[]> {
     .eq('quiz_progress.user_id', user.id);
 
   if (error) throw error;
-  return (data ?? []) as unknown as QuizRow[];
+  return (data ?? []) as QuizWithProgress[];
 }
 
-export async function fetchQuizzes(): Promise<QuizRow[]> {
+export async function fetchQuizzes(): Promise<QuizWithProgress[]> {
   const user = await getCurrentUser();
   const { data: userData } = await supabase
     .from('profile')
@@ -75,7 +82,8 @@ export async function getQuestionsFromQuiz(quizId: number | string): Promise<Qui
     .eq('id', quizId)
     .single();
   if (error) throw error;
-  return (data as unknown as { questions: { questions: QuizQuestion[] } }).questions.questions;
+  const quiz = data as { questions: QuizQuestionSet };
+  return quiz.questions.questions;
 }
 
 export async function getQuestionsFromQuizProgressIfExists(quizId: number | string): Promise<QuizQuestion[] | null> {
@@ -87,7 +95,7 @@ export async function getQuestionsFromQuizProgressIfExists(quizId: number | stri
     .eq('user_id', user.id)
     .single();
   if (error) return null;
-  return (data as unknown as QuizProgressRow)?.questions_shuffled ?? null;
+  return (data as Pick<QuizProgressRow, 'questions_shuffled'>)?.questions_shuffled ?? null;
 }
 
 function shuffleQuizQuestionsAndChoices(questions: QuizQuestion[]): QuizQuestion[] {
@@ -113,7 +121,10 @@ export async function fetchQuizQuestions(quizId: number | string): Promise<QuizQ
     if (userType === 'student') {
       await supabase
         .from('quiz_progress')
-        .update({ start_time: new Date().toISOString(), questions_shuffled: questions as unknown as never })
+        .update({
+          start_time: new Date().toISOString(),
+          questions_shuffled: questions,
+        })
         .eq('user_id', user.id)
         .eq('quiz_id', quizId);
     }
@@ -131,7 +142,7 @@ export async function fetchQuizStateIfExists(quizId: number | string): Promise<Q
     .eq('user_id', user.id)
     .single();
   if (error) return null;
-  return data as unknown as QuizProgressRow;
+  return data as QuizProgressRow;
 }
 
 export async function getUserRanking(quizId: number | string): Promise<number | undefined> {
@@ -148,7 +159,9 @@ export async function getUserRanking(quizId: number | string): Promise<number | 
     .find((item) => item.user_id === user.id)?.rank;
 }
 
-export async function fetchLeaderboard(quizId: number | string) {
+export async function fetchLeaderboard(
+  quizId: number | string,
+): Promise<LeaderboardEntry[]> {
   const { data, error } = await supabase
     .from('quiz_progress')
     .select('id, user_id, points, profile(full_name)')
@@ -158,10 +171,15 @@ export async function fetchLeaderboard(quizId: number | string) {
     .limit(5);
   if (error || !data) return [];
   const currentUser = await getCurrentUser();
-  return data.map((user, index) => ({
+  const leaderboardRows = data as Array<{
+    user_id: string;
+    points: number | null;
+    profile: Array<{ full_name: string | null }> | null;
+  }>;
+  return leaderboardRows.map((user, index) => ({
     rank: index + 1,
-    name: (user.profile as unknown as { full_name: string })?.full_name ?? '',
-    points: (user.points as number).toLocaleString(),
+    name: user.profile?.[0]?.full_name ?? '',
+    points: (user.points ?? 0).toLocaleString(),
     isCurrentUser: user.user_id === currentUser.id,
   }));
 }

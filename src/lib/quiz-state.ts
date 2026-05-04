@@ -3,6 +3,12 @@ import type { QuizState, QuizProgressRow, QuizWithProgress } from '@/types/quiz'
 import { getCurrentUser } from '@/queries/quiz-queries';
 import { getUserRanking } from '@/queries/quiz-queries';
 
+function normalizeQuizRunStatus(
+  status: QuizProgressRow['status'] | null | undefined,
+): QuizState['status'] {
+  return status === 'Done' ? 'Done' : 'Pending';
+}
+
 export async function extractQuizState(
   quizId: number | string,
   quizState: QuizProgressRow | null,
@@ -36,7 +42,7 @@ export async function extractQuizState(
     score: quizState!.score || 0,
     points: quizState!.points || 0,
     currentQuestionPoints: 0,
-    status: quizState!.status || 'Pending',
+    status: normalizeQuizRunStatus(quizState!.status),
     remainingTime: quizState!.remaining_time || 0,
     questionsAnswered: quizState!.questions_answered || [],
   };

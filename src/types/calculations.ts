@@ -2,11 +2,40 @@ export type HeightUnit = 'cm' | 'm' | 'ft';
 export type WeightUnit = 'kg' | 'lbs';
 export type MeasurementUnit = 'cm' | 'm' | 'ft';
 export type Gender = 'male' | 'female';
-export type BMRFormula = 'Mifflin St Jeor' | 'Revised Harris-Benedict' | 'Katch-Mcardle';
+export type BMRFormula =
+  | 'Mifflin St Jeor'
+  | 'Revised Harris-Benedict'
+  | 'Katch-McArdle';
+export type BMRActivityLevel =
+  | 'Sedentary: little or no exercise'
+  | 'Light: exercise 1-3 times/week'
+  | 'Moderate: exercise 4-5 times/week'
+  | 'Active: daily exercise or intense exercise 3-4 times/week'
+  | 'Very Active: intense exercise 6-7 times/week'
+  | 'Extra Active: very intense exercise daily, or physical job';
+export type WaterIntakeActivityLevel =
+  | 'Sedentary (Little to No Exercise)'
+  | 'Light Exercise (1-2 times/week)'
+  | 'Moderate Exercise (3-5 times/week)'
+  | 'High Exercise (6-7 times/week)'
+  | 'Extreme (2x per day)';
+export type HeartRateZone =
+  | 'Very Light'
+  | 'Light'
+  | 'Moderate'
+  | 'Hard'
+  | 'Very Hard';
 
 export interface BMRResult {
   BMR: number;
-  DailyCalories: Record<string, number>;
+  DailyCalories: {
+    sedentary: number;
+    'lightly active': number;
+    'moderately active': number;
+    'very active': number;
+    'extra active': number;
+    'super active': number;
+  };
 }
 
 export interface IBWResult {
@@ -42,6 +71,11 @@ export interface BodyFatResult {
     'Body Fat Loss to Reach Ideal': string;
     'Body Fat: BMI Method': string;
   };
+}
+
+export interface HeartRateResult {
+  zone: HeartRateZone;
+  range: string;
 }
 
 export interface BodyFatParams {

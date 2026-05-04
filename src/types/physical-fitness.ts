@@ -1,3 +1,11 @@
+export type PFTGender = '' | 'Male' | 'Female';
+export type PFTCategory =
+  | ''
+  | 'elementaryBoys'
+  | 'secondaryBoys'
+  | 'elementaryGirls'
+  | 'secondaryGirls';
+
 export interface PFTTestResult {
   title: string;
   record: string;
@@ -6,9 +14,25 @@ export interface PFTTestResult {
   classification: string;
 }
 
+export type PFTColumnName =
+  | 'pre_physical_fitness_test'
+  | 'post_physical_fitness_test';
+
+export type PFTSessionKey =
+  | 'bmiWeight'
+  | 'bmiHeight'
+  | 'zipperTestRight'
+  | 'zipperTestLeft'
+  | 'sitAndReachFirst'
+  | 'sitAndReachSecond'
+  | 'preStepTest'
+  | 'stepTest'
+  | 'pushUp'
+  | 'basicPlank';
+
 export interface PFTSessionData {
-  gender: string;
-  category: string;
+  gender: PFTGender;
+  category: PFTCategory;
   isPARQFinished: boolean;
   finishedTestIndex: number[];
   bmiWeight?: PFTTestResult;
@@ -41,7 +65,7 @@ export type PFTClassification = ClassificationEntry[] | PushUpClassification;
 
 export interface PFTTestDefinition {
   title: string;
-  key: string;
+  key: PFTSessionKey;
   description: string[];
   equipment: string[];
   instructionsForTester: string[];

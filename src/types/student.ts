@@ -1,4 +1,6 @@
 import type { LectureProgressItem } from './lecture';
+import type { DbQuizStatus } from './quiz';
+import type { PFTSessionData } from './physical-fitness';
 
 export interface ClassCode {
   class_code: string;
@@ -6,26 +8,29 @@ export interface ClassCode {
   class_color: string;
 }
 
+export interface RawStudentQuizData {
+  quiz_number: number;
+  status: DbQuizStatus;
+  score: number | null;
+  total_items: number | null;
+}
+
 export interface RawStudentData {
   uuid: string;
   full_name: string;
   email: string;
-  lecture_progress: [LectureProgressItem[]];
-  pre_physical_fitness_test: [{ finishedTestIndex: number[] }] | null;
-  post_physical_fitness_test: [{ finishedTestIndex: number[] }] | null;
-  quiz_data: Array<{
-    quiz_number: number;
-    status: string;
-    score: number;
-    total_items: number;
-  }> | null;
+  lecture_progress: LectureProgressItem[][] | null;
+  pre_physical_fitness_test: PFTSessionData[] | null;
+  post_physical_fitness_test: PFTSessionData[] | null;
+  quiz_data: RawStudentQuizData[] | null;
 }
 
-export interface CleanedStudent {
+export interface CleanedStudentBase {
   email: string;
   studentName: string;
   uuid: string;
   preTestCompleted: boolean;
   postTestCompleted: boolean;
-  [key: string]: string | boolean | number;
 }
+
+export type CleanedStudent = CleanedStudentBase & Record<string, string | boolean>;

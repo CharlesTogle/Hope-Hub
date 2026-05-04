@@ -18,3 +18,8 @@ export interface Reference {
   name: string;
   link: string;
 }
+
+export interface WorkoutVideoGroup {
+  heading: string;
+  videos: WorkoutVideo[];
+}
