@@ -1,5 +1,6 @@
 import './styles/global.css';
 import { memo, useCallback, useEffect, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BrowserRouter,
   Outlet,
@@ -39,10 +40,11 @@ import { HealthCalculatorWrapper } from './pages/HealthCalculators/HealthCalcula
 import ViewClass from './pages/Dashboard/ViewClass';
 import Loading from './components/Loading';
 import { Toaster } from '@/components/ui/sonner';
+import supabase from '@/client/supabase';
+import { authKeys } from '@/lib/query-keys';
+import { fetchAuthenticatedProfile } from '@/queries/auth-queries';
 import { useAuthStore } from '@/store/auth-store';
-import { usePhysicalFitnessStore } from '@/store/physical-fitness-store';
 import { useUIStore } from '@/store/ui-store';
-import { PhysicalFitnessData } from '@/utilities/PhysicalFitnessData';
 
 interface HamburgerMenuProps {
   showMenu: boolean;
@@ -95,23 +97,39 @@ function ProtectedRoute() {
 }
 
 function SidebarLayout() {
-  const hydrate = useAuthStore((state) => state.hydrate);
+  const setAuthState = useAuthStore((state) => state.setAuthState);
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
   const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
   const showMenu = useUIStore((state) => state.showMenu);
   const setShowMenu = useUIStore((state) => state.setShowMenu);
   const lastScrollY = useUIStore((state) => state.lastScrollY);
   const setLastScrollY = useUIStore((state) => state.setLastScrollY);
-  const hydratedRef = useRef(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const location = useLocation();
+  const queryClient = useQueryClient();
+
+  const { data: authSession } = useQuery({
+    queryKey: authKeys.current(),
+    queryFn: fetchAuthenticatedProfile,
+  });
 
   useEffect(() => {
-    if (!hydratedRef.current) {
-      hydratedRef.current = true;
-      hydrate();
+    if (!authSession) {
+      return;
     }
-  }, [hydrate]);
+
+    setAuthState(authSession);
+  }, [authSession, setAuthState]);
+
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      void queryClient.invalidateQueries({ queryKey: authKeys.all });
+    });
+
+    return () => subscription.unsubscribe();
+  }, [queryClient]);
 
   const handleHamburgerClick = useCallback(() => {
     setSidebarOpen(!sidebarOpen);
@@ -151,7 +169,7 @@ function SidebarLayout() {
     if (location.pathname.includes('/quizzes/')) {
       setSidebarOpen(false);
     }
-  }, [location.pathname]);
+  }, [location.pathname, setSidebarOpen]);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -178,14 +196,6 @@ function SidebarLayout() {
 
 function PhysicalFitnessWrapper() {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const sessionData = usePhysicalFitnessStore((state) => state.sessionData);
-  const setSessionData = usePhysicalFitnessStore((state) => state.setSessionData);
-
-  useEffect(() => {
-    if (!sessionData) {
-      setSessionData(PhysicalFitnessData);
-    }
-  }, [sessionData, setSessionData]);
 
   useEffect(() => {
     const handleScrollToTop = () => {

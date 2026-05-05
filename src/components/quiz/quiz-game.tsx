@@ -171,7 +171,7 @@ export default function QuizGame({
             onTimerEnd={() => {
               handleAnswerSelected(
                 isIdentification ? identificationAnswer : '',
-                isIdentification ? false : true,
+                false,
               );
               setIdentificationAnswer('');
             }}
@@ -183,7 +183,7 @@ export default function QuizGame({
           key={quizState.questionIndex}
           index={quizState.questionIndex}
           question={currentQuestion}
-          score={quizState.score}
+          score={quizState.points}
           handleAnswer={handleAnswerSelected}
           isAnswerLocked={isAnswerLocked}
           totalItems={questions.length}
