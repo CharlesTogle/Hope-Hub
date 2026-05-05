@@ -1,27 +1,57 @@
 import { create } from 'zustand';
+import getDataFromStorage from '@/utilities/getDataFromStorage';
+import setDataToStorage from '@/utilities/setDataToStorage';
+import {
+  PFT_STORAGE_KEY,
+  getStoredOrDefaultPftSessionData,
+} from '@/lib/pft-session';
 import type { PFTSessionData } from '@/types/physical-fitness';
 
 interface PhysicalFitnessState {
-  sessionData: PFTSessionData | null;
+  sessionData: PFTSessionData;
   setSessionData: (data: PFTSessionData) => void;
   updateField: <K extends keyof PFTSessionData>(key: K, value: PFTSessionData[K]) => void;
+  clearSessionData: () => void;
   reset: () => void;
 }
 
-const initialState = {
-  sessionData: null as PFTSessionData | null,
-};
+function getInitialSessionData(): PFTSessionData {
+  if (typeof window === 'undefined') {
+    return getStoredOrDefaultPftSessionData(null);
+  }
+
+  return getStoredOrDefaultPftSessionData(
+    getDataFromStorage<PFTSessionData>(PFT_STORAGE_KEY),
+  );
+}
+
+const initialState = () => ({
+  sessionData: getInitialSessionData(),
+});
 
 export const usePhysicalFitnessStore = create<PhysicalFitnessState>((set) => ({
-  ...initialState,
+  ...initialState(),
 
-  setSessionData: (data) => set({ sessionData: data }),
+  setSessionData: (data) => {
+    setDataToStorage(PFT_STORAGE_KEY, data);
+    set({ sessionData: data });
+  },
 
   updateField: (key, value) =>
-    set((s) => {
-      if (!s.sessionData) return s;
-      return { sessionData: { ...s.sessionData, [key]: value } };
-    }),
+    set((state) => {
+      const nextSessionData = {
+        ...state.sessionData,
+        [key]: value,
+      };
 
-  reset: () => set(initialState),
+      setDataToStorage(PFT_STORAGE_KEY, nextSessionData);
+
+      return { sessionData: nextSessionData };
+    }),
+  clearSessionData: () => {
+    localStorage.removeItem(PFT_STORAGE_KEY);
+    set({ sessionData: getStoredOrDefaultPftSessionData(null) });
+  },
+
+  reset: () => set(initialState()),
 }));

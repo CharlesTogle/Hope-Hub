@@ -1,16 +1,15 @@
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useReducer } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PhysicalFitnessTestList } from '@/utilities/PhysicalFitnessTestList';
 import { AlertMessage } from '@/components/utilities/AlertMessage';
-import setDataToStorage from '@/utilities/setDataToStorage';
-import getDataFromStorage from '@/utilities/getDataFromStorage';
 import SimpleTimer from '@/components/utilities/SimpleTimer';
 import ResultSection from './ResultSection';
 import TipsAndInterpretation from './TipsAndInterpretation';
-import supabase from '@/client/supabase';
 import { useMobile } from '@/hooks/useMobile';
 import { useAuthStore } from '@/store/auth-store';
 import { usePhysicalFitnessStore } from '@/store/physical-fitness-store';
+import { PFT_TIMEOUT_SECONDS } from '@/lib/pft-session';
+import { savePftSession } from '@/mutations/pft-mutations';
 import type {
   ClassificationEntry,
   PFTClassification,
@@ -35,6 +34,21 @@ interface TestResultsState {
   classification: string;
 }
 
+interface PhysicalFitnessTestViewState {
+  alertMessage: string | null;
+  testResults: TestResultsState;
+}
+
+type PhysicalFitnessTestAction =
+  | {
+      type: 'set-test-result';
+      key: keyof TestResultsState;
+      value: string;
+    }
+  | { type: 'show-alert'; message: string }
+  | { type: 'hide-alert' }
+  | { type: 'reset-for-next-test'; value: string };
+
 interface InstructionsGroupProps {
   text: string;
   items: string[];
@@ -45,6 +59,55 @@ function formatCurrentTime(): string {
   return `${String(new Date().getHours()).padStart(2, '0')}:${String(
     new Date().getMinutes(),
   ).padStart(2, '0')}`;
+}
+
+function createInitialTestResults(timeValue: string): TestResultsState {
+  return {
+    reps: '',
+    timeStarted: timeValue,
+    timeEnded: '',
+    classification: 'No data available',
+  };
+}
+
+function createInitialViewState(): PhysicalFitnessTestViewState {
+  return {
+    alertMessage: null,
+    testResults: createInitialTestResults(formatCurrentTime()),
+  };
+}
+
+function physicalFitnessTestReducer(
+  state: PhysicalFitnessTestViewState,
+  action: PhysicalFitnessTestAction,
+): PhysicalFitnessTestViewState {
+  switch (action.type) {
+    case 'set-test-result':
+      return {
+        ...state,
+        testResults: {
+          ...state.testResults,
+          [action.key]: action.value,
+        },
+      };
+    case 'show-alert':
+      return {
+        ...state,
+        alertMessage: action.message,
+      };
+    case 'hide-alert':
+      return {
+        ...state,
+        alertMessage: null,
+      };
+    case 'reset-for-next-test':
+      return {
+        alertMessage: null,
+        testResults: createInitialTestResults(action.value),
+      };
+    default:
+      return state;
+  }
 }
 
 function parseTime(timeString: string): number {
@@ -109,36 +172,25 @@ export default function PhysicalFitnessTest({
   testType,
   userType,
 }: PhysicalFitnessTestProps) {
-  const [currentTime, setCurrentTime] = useState(formatCurrentTime());
-  const [category, setCategory] = useState<PFTSessionData['category']>('');
-  const [testResults, setTestResults] = useState<TestResultsState>({
-    reps: '',
-    timeStarted: formatCurrentTime(),
-    timeEnded: '',
-    classification: 'No data available',
-  });
-  const [showAlert, setShowAlert] = useState(false);
-  const [alertMessage, setAlertMessage] = useState('');
-  const [timerTime, setTimerTime] = useState(1200);
-
-  const { setSessionData } = usePhysicalFitnessStore();
+  const [viewState, dispatch] = useReducer(
+    physicalFitnessTestReducer,
+    undefined,
+    createInitialViewState,
+  );
+  const setSessionData = usePhysicalFitnessStore((state) => state.setSessionData);
   const userId = useAuthStore((state) => state.profile?.uuid ?? null);
   const navigate = useNavigate();
   const isTeacher = userType === 'teacher';
   const isMobile = useMobile();
   const testIndex = Number(index);
   const testDetails = PhysicalFitnessTestList[testIndex];
+  const { alertMessage, testResults } = viewState;
 
   const scrollToTop = useCallback(() => {
     if (isMobile) {
       window.dispatchEvent(new Event('scrollPFTContainerToTop'));
     }
   }, [isMobile]);
-
-  useEffect(() => {
-    const storedData = getDataFromStorage<PFTSessionData>('physicalFitnessData');
-    setCategory(storedData?.category ?? '');
-  }, []);
 
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -153,24 +205,20 @@ export default function PhysicalFitnessTest({
   }, []);
 
   const setClassification = useCallback((value: string) => {
-    setTestResults((previous) => ({
-      ...previous,
-      classification: value,
-    }));
+    dispatch({
+      type: 'set-test-result',
+      key: 'classification',
+      value,
+    });
   }, []);
 
   const handleInterpretation = useCallback(
-    (updatedTestResults: TestResultsState) => {
-      const reps = Number.parseFloat(updatedTestResults.reps);
-      const storedData = getDataFromStorage<PFTSessionData>('physicalFitnessData');
-      const storedCategory = storedData?.category ?? '';
-      const activeCategory = storedCategory || category;
+    (recordValue: string) => {
+      const reps = Number.parseFloat(recordValue);
       const entries = getClassificationEntries(
         testDetails?.classification,
-        activeCategory,
+        physicalFitnessData.category,
       );
-
-      setCategory(activeCategory);
 
       if (!entries || Number.isNaN(reps)) {
         setClassification('No information available');
@@ -195,7 +243,7 @@ export default function PhysicalFitnessTest({
 
       setClassification(matchingEntry?.interpretation ?? 'No information available');
     },
-    [category, setClassification, testDetails],
+    [physicalFitnessData.category, setClassification, testDetails],
   );
 
   const handleResultChange = useCallback(
@@ -206,19 +254,17 @@ export default function PhysicalFitnessTest({
         'Time End': 'timeEnded',
       } satisfies Record<'Record' | 'Time Started' | 'Time End', keyof TestResultsState>;
       const key = keyMap[type];
+      const nextValue = String(value);
 
-      setTestResults((previous) => {
-        const updatedTestResults: TestResultsState = {
-          ...previous,
-          [key]: String(value),
-        };
-
-        if (key === 'reps') {
-          handleInterpretation(updatedTestResults);
-        }
-
-        return updatedTestResults;
+      dispatch({
+        type: 'set-test-result',
+        key,
+        value: nextValue,
       });
+
+      if (key === 'reps') {
+        handleInterpretation(nextValue);
+      }
     },
     [handleInterpretation],
   );
@@ -230,12 +276,7 @@ export default function PhysicalFitnessTest({
       }
 
       setSessionData(updatedData);
-      setDataToStorage('physicalFitnessData', updatedData);
-
-      await supabase
-        .from('physical_fitness_test')
-        .update({ [testType]: updatedData })
-        .eq('uuid', userId);
+      await savePftSession(userId, testType, updatedData);
     },
     [setSessionData, testType, userId],
   );
@@ -244,12 +285,9 @@ export default function PhysicalFitnessTest({
     (timeValue: string) => {
       scrollToTop();
       navigate(`/physical-fitness-test/test/${testIndex + 1}`);
-      setTimerTime(1200);
-      setTestResults({
-        reps: '',
-        timeStarted: timeValue,
-        timeEnded: '',
-        classification: 'No data available',
+      dispatch({
+        type: 'reset-for-next-test',
+        value: timeValue,
       });
     },
     [navigate, scrollToTop, testIndex],
@@ -268,15 +306,15 @@ export default function PhysicalFitnessTest({
     }
 
     const nowTime = formatCurrentTime();
-    setCurrentTime(nowTime);
-
     const hasEmptyField = Object.values(testResults).some(
       (value) => value.trim() === '',
     );
 
     if (hasEmptyField) {
-      setAlertMessage('Please fill out all fields before submitting');
-      setShowAlert(true);
+      dispatch({
+        type: 'show-alert',
+        message: 'Please fill out all fields before submitting',
+      });
       return;
     }
 
@@ -289,8 +327,10 @@ export default function PhysicalFitnessTest({
     const isTimeEndValid = endTimeInMinutes - startTimeInMinutes > 20;
 
     if (isStartTimeAfterEndTime || isEndTimeAfterCurrentTime) {
-      setAlertMessage("Please input a valid time for 'Time End'");
-      setShowAlert(true);
+      dispatch({
+        type: 'show-alert',
+        message: "Please input a valid time for 'Time End'",
+      });
       return;
     }
 
@@ -299,18 +339,20 @@ export default function PhysicalFitnessTest({
       testDetails.title !== 'BMI (Weight)' &&
       testDetails.title !== 'BMI (Height)'
     ) {
-      setAlertMessage(
-        'Test duration is too short. The test must last more than 2 minutes for accurate results.',
-      );
-      setShowAlert(true);
+      dispatch({
+        type: 'show-alert',
+        message:
+          'Test duration is too short. The test must last more than 2 minutes for accurate results.',
+      });
       return;
     }
 
     if (isTimeEndValid) {
-      setAlertMessage(
-        'Test duration is too long. The test should not exceed 20 minutes. Please check your time entries.',
-      );
-      setShowAlert(true);
+      dispatch({
+        type: 'show-alert',
+        message:
+          'Test duration is too long. The test should not exceed 20 minutes. Please check your time entries.',
+      });
       return;
     }
 
@@ -350,8 +392,6 @@ export default function PhysicalFitnessTest({
     }
 
     const nowTime = formatCurrentTime();
-    setCurrentTime(nowTime);
-
     const updatedFinishedTestIndex = [...physicalFitnessData.finishedTestIndex];
     updatedFinishedTestIndex[testIndex] = testIndex;
 
@@ -411,11 +451,11 @@ export default function PhysicalFitnessTest({
 
   return (
     <div id="test-container" className="min-w-[100%] h-full">
-      {showAlert && (
+      {alertMessage && (
         <AlertMessage
           text={alertMessage}
-          onCancel={() => setShowAlert(false)}
-          onConfirm={() => setShowAlert(false)}
+          onCancel={() => dispatch({ type: 'hide-alert' })}
+          onConfirm={() => dispatch({ type: 'hide-alert' })}
         />
       )}
       <div
@@ -442,7 +482,7 @@ export default function PhysicalFitnessTest({
             >
               <p className="text-lg font-bold italic">Timeout in:</p>
               <SimpleTimer
-                time={timerTime}
+                time={PFT_TIMEOUT_SECONDS}
                 className="flex flex-row justify-start items-center space-x-5 lg:relative lg:right-0 lg:w-[50%] lg:mt-2"
                 onEnd={() => setIsTimeout(true)}
                 testName={title}
@@ -490,7 +530,6 @@ export default function PhysicalFitnessTest({
             }}
             handleBack={handleBackForTeacher}
             testResults={testResults}
-            currentTime={currentTime}
             unit={unit}
             isTeacher={isTeacher}
             testNumber={testIndex}

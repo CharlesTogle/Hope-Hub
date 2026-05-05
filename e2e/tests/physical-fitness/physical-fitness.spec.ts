@@ -115,10 +115,36 @@ test.describe('Physical Fitness Test — PAR-Q', () => {
     await page.goto(APP_ROUTES.physicalFitnessTest.parq);
     await page.waitForLoadState('networkidle');
 
-    // Teacher auto-skips to test — should redirect to test/0
-    const url = page.url();
-    // Either stays on parq or redirects to test
-    expect(url).toBeTruthy();
+    await expect(page).toHaveURL(new RegExp(`${APP_ROUTES.physicalFitnessTest.test(0)}$`));
+    await expect(page.getByText('Teachers are to conduct PFTs only')).toBeVisible();
+  });
+
+  test('student test page redirects to PAR-Q when PAR-Q is not finished', async ({
+    page,
+    studentUser,
+    setAuthSession,
+    mockPhysicalFitnessTest,
+  }) => {
+    await setAuthSession(studentUser);
+    await mockPhysicalFitnessTest({
+      uuid: studentUser.id,
+      pre_physical_fitness_test: null,
+      post_physical_fitness_test: null,
+    });
+
+    await page.addInitScript(() => {
+      localStorage.setItem('physicalFitnessData', JSON.stringify({
+        gender: '',
+        category: '',
+        isPARQFinished: false,
+        finishedTestIndex: [],
+      }));
+    });
+
+    await page.goto(APP_ROUTES.physicalFitnessTest.test(0));
+    await page.waitForLoadState('networkidle');
+
+    await expect(page).toHaveURL(new RegExp(`${APP_ROUTES.physicalFitnessTest.parq}$`));
   });
 });
 

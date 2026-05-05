@@ -6,13 +6,15 @@ import PageHeading from '@/components/PageHeading';
 import { AlertMessage } from '@/components/utilities/AlertMessage';
 import ErrorMessage from '@/components/utilities/ErrorMessage';
 import Loading from '@/components/Loading';
-import supabase from '@/client/supabase';
-import { pftKeys, profileKeys } from '@/lib/query-keys';
+import { pftKeys } from '@/lib/query-keys';
+import {
+  isFinishedTestSession,
+  resetPftProgress,
+} from '@/lib/pft-session';
+import { fetchPftStatus } from '@/queries/pft-queries';
 import { usePhysicalFitnessStore } from '@/store/physical-fitness-store';
 import { useAuthStore } from '@/store/auth-store';
-import getDataFromStorage from '@/utilities/getDataFromStorage';
-import type { UserType } from '@/types/auth';
-import type { PFTColumnName, PFTSessionData } from '@/types/physical-fitness';
+import type { PFTColumnName } from '@/types/physical-fitness';
 
 interface PFTStatus {
   isTaken: boolean;
@@ -23,97 +25,47 @@ export function PhysicalFitnessTestPage() {
   const { testIndex = '0' } = useParams<{ testIndex: string }>();
   const [isTimeout, setIsTimeout] = useState(false);
   const navigate = useNavigate();
-
-  const {
-    sessionData: physicalFitnessData,
-    setSessionData: setPhysicalFitnessData,
-  } = usePhysicalFitnessStore();
+  const currentSessionData = usePhysicalFitnessStore((state) => state.sessionData);
+  const setSessionData = usePhysicalFitnessStore((state) => state.setSessionData);
+  const clearSessionData = usePhysicalFitnessStore(
+    (state) => state.clearSessionData,
+  );
   const profile = useAuthStore((state) => state.profile);
   const userId = profile?.uuid ?? null;
-  const dataFromStorage = getDataFromStorage<PFTSessionData>('physicalFitnessData');
-  const currentSessionData = physicalFitnessData ?? dataFromStorage;
-  const hasStorageData = !!currentSessionData;
+  const userType = profile?.user_type ?? 'student';
+  const isTeacher = userType === 'teacher';
   const currentTestIndex = Number(testIndex);
-  const finishedTestIndex = currentSessionData?.finishedTestIndex ?? [];
+  const finishedTestIndex = currentSessionData.finishedTestIndex;
   const isBadRequest =
-    !currentSessionData ||
-    (testIndex !== '0' &&
-      (!finishedTestIndex.includes(currentTestIndex - 1) ||
-        finishedTestIndex.length <= currentTestIndex));
-
-  const { data: userType = 'student', isLoading: typeLoading } = useQuery<UserType>({
-    queryKey: [...profileKeys.detail(userId ?? ''), 'user-type'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('profile')
-        .select('user_type')
-        .eq('uuid', userId)
-        .single();
-
-      return data?.user_type ?? 'student';
-    },
-    enabled: !!userId,
-  });
+    !isTeacher &&
+    testIndex !== '0' &&
+    (!finishedTestIndex.includes(currentTestIndex - 1) ||
+      finishedTestIndex.length <= currentTestIndex);
 
   const { data: pftStatus, isLoading: pftLoading } = useQuery<PFTStatus>({
     queryKey: pftKeys.session(userId ?? ''),
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('physical_fitness_test')
-        .select('pre_physical_fitness_test, post_physical_fitness_test')
-        .eq('uuid', userId)
-        .single();
-
-      if (error) {
-        return { isTaken: false, testType: 'pre_physical_fitness_test' };
-      }
-
-      const preFinishedIndex = data?.pre_physical_fitness_test?.finishedTestIndex ?? [];
-      const postFinishedIndex = data?.post_physical_fitness_test?.finishedTestIndex ?? [];
-      const maxFinishedIndex = Math.max(
-        preFinishedIndex.length - 1,
-        postFinishedIndex.length - 1,
-      );
-
-      if (
-        preFinishedIndex.includes(maxFinishedIndex) &&
-        postFinishedIndex.includes(maxFinishedIndex)
-      ) {
-        return { isTaken: true, testType: 'pre_physical_fitness_test' };
-      }
-
-      if (!preFinishedIndex.includes(maxFinishedIndex)) {
-        return { isTaken: false, testType: 'pre_physical_fitness_test' };
-      }
-
-      return { isTaken: false, testType: 'post_physical_fitness_test' };
-    },
+    queryFn: () => fetchPftStatus(userId ?? ''),
     enabled: !!userId,
   });
 
   useEffect(() => {
-    if (dataFromStorage && !physicalFitnessData) {
-      setPhysicalFitnessData(dataFromStorage);
+    if (pftLoading || !userId || isTeacher) {
+      return;
     }
-  }, [dataFromStorage, physicalFitnessData, setPhysicalFitnessData]);
+
+    if (!currentSessionData.isPARQFinished) {
+      navigate('/physical-fitness-test/parq');
+    }
+  }, [currentSessionData.isPARQFinished, isTeacher, navigate, pftLoading, userId]);
 
   useEffect(() => {
-    if (!currentSessionData) {
+    if (!isFinishedTestSession(currentSessionData)) {
       return;
     }
 
-    const completedIndexes = currentSessionData.finishedTestIndex;
-    const isFinished =
-      completedIndexes.length > 0 &&
-      completedIndexes.includes(completedIndexes.length - 1);
+    clearSessionData();
 
-    if (!isFinished) {
-      return;
-    }
-
-    localStorage.removeItem('physicalFitnessData');
-
-    if (userType === 'teacher') {
+    if (isTeacher) {
       navigate('/dashboard');
       return;
     }
@@ -124,15 +76,11 @@ export function PhysicalFitnessTestPage() {
         nextTestType === 'pre_physical_fitness_test' ? 'pre-test' : 'post-test'
       }`,
     );
-  }, [currentSessionData, navigate, pftStatus?.testType, userType]);
+  }, [clearSessionData, currentSessionData, isTeacher, navigate, pftStatus?.testType]);
 
   const handleTimeoutConfirm = () => {
-    if (testIndex === '0') {
-      setIsTimeout(false);
-      window.location.reload();
-      return;
-    }
-
+    setIsTimeout(false);
+    setSessionData(resetPftProgress(currentSessionData));
     navigate('/physical-fitness-test/test/0');
   };
 
@@ -140,7 +88,7 @@ export function PhysicalFitnessTestPage() {
     navigate('/physical-fitness-test/parq');
   };
 
-  if (typeLoading || pftLoading || !userId) {
+  if (pftLoading || !userId) {
     return <Loading />;
   }
 
@@ -167,24 +115,18 @@ export function PhysicalFitnessTestPage() {
     );
   }
 
-  if (!currentSessionData) {
-    return <Loading />;
-  }
-
   return (
     <div id="physical-fitness-test-container">
       <PageHeading text="Physical Fitness Test" />
-      {hasStorageData && (
-        <div id="physical-fitness-content" className="content-container w-full! mb-10">
-          <PhysicalFitnessTest
-            physicalFitnessData={currentSessionData}
-            index={testIndex}
-            setIsTimeout={setIsTimeout}
-            testType={pftStatus?.testType ?? 'pre_physical_fitness_test'}
-            userType={userType}
-          />
-        </div>
-      )}
+      <div id="physical-fitness-content" className="content-container w-full! mb-10">
+        <PhysicalFitnessTest
+          physicalFitnessData={currentSessionData}
+          index={testIndex}
+          setIsTimeout={setIsTimeout}
+          testType={pftStatus?.testType ?? 'pre_physical_fitness_test'}
+          userType={userType}
+        />
+      </div>
     </div>
   );
 }

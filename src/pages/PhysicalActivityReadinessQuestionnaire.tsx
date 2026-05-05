@@ -1,17 +1,22 @@
-import PageHeading from '@/components/PageHeading';
-import { usePhysicalFitnessStore } from '@/store/physical-fitness-store';
-import { useState } from 'react';
+import { useEffect, useMemo, useReducer } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import PageHeading from '@/components/PageHeading';
 import { AlertMessage } from '@/components/utilities/AlertMessage';
-import setDataToStorage from '@/utilities/setDataToStorage';
-import supabase from '@/client/supabase';
 import Footer from '@/components/Footer';
 import Loading from '@/components/Loading';
-import { numberOfTests } from '@/utilities/PhysicalFitnessData';
-import { useQuery } from '@tanstack/react-query';
-import { profileKeys } from '@/lib/query-keys';
+import { pftKeys } from '@/lib/query-keys';
+import { getNextUnfinishedTestIndex } from '@/lib/pft-session';
+import { savePftSession } from '@/mutations/pft-mutations';
+import { fetchPftRecord } from '@/queries/pft-queries';
+import { usePhysicalFitnessStore } from '@/store/physical-fitness-store';
 import { useAuthStore } from '@/store/auth-store';
-import type { PFTSessionData } from '@/types/physical-fitness';
+import { numberOfTests } from '@/utilities/PhysicalFitnessData';
+import type {
+  PFTCategory,
+  PFTGender,
+  PFTSessionData,
+} from '@/types/physical-fitness';
 
 const QUESTIONS = [
   'Has your doctor ever said that you have a heart condition and that you should only do physical activity recommended by a doctor?',
@@ -21,120 +26,245 @@ const QUESTIONS = [
   'Is your doctor currently prescribing drugs (for example, water pills) for your blood pressure or heart condition?',
   'Do you know of any other reason why you should not do physical activity?',
   'Hope Hub and its affiliated parties shall not be liable for any property damage or injuries that occur during this test. Do you agree?',
-];
+] as const;
+
+type ParqAnswer = 'Yes' | 'No' | null;
+
+interface ParqState {
+  answers: ParqAnswer[];
+  errorMessage: string | null;
+}
+
+type ParqAction =
+  | { type: 'set-answer'; index: number; value: Exclude<ParqAnswer, null> }
+  | { type: 'show-error'; message: string }
+  | { type: 'clear-error' };
+
+function createInitialParqState(): ParqState {
+  return {
+    answers: Array.from({ length: QUESTIONS.length }, () => null),
+    errorMessage: null,
+  };
+}
+
+function parqReducer(state: ParqState, action: ParqAction): ParqState {
+  switch (action.type) {
+    case 'set-answer': {
+      const nextAnswers = [...state.answers];
+      nextAnswers[action.index] = action.value;
+
+      return {
+        ...state,
+        answers: nextAnswers,
+      };
+    }
+    case 'show-error':
+      return {
+        ...state,
+        errorMessage: action.message,
+      };
+    case 'clear-error':
+      return {
+        ...state,
+        errorMessage: null,
+      };
+    default:
+      return state;
+  }
+}
 
 export default function PhysicalActivityReadinessQuestionnaire() {
-  const { sessionData: physicalFitnessData, setSessionData: setPhysicalFitnessData } = usePhysicalFitnessStore();
-  const [areAllAnswersNo, setAreAllAnswersNo] = useState(false);
-  const [areAllAnswered, setAreAllAnswered] = useState(false);
-  const [areAllUserDataFilled, setAreAllUserDataFilled] = useState(false);
-  const [answers, setAnswers] = useState(Array(7).fill(null));
-  const [isError, setIsError] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
+  const physicalFitnessData = usePhysicalFitnessStore((state) => state.sessionData);
+  const setPhysicalFitnessData = usePhysicalFitnessStore(
+    (state) => state.setSessionData,
+  );
+  const updateField = usePhysicalFitnessStore((state) => state.updateField);
+  const [state, dispatch] = useReducer(parqReducer, undefined, createInitialParqState);
   const navigate = useNavigate();
   const { profile } = useAuthStore();
   const userId = profile?.uuid ?? null;
+  const userType = profile?.user_type ?? 'student';
+  const { answers, errorMessage } = state;
 
-  const { data: userType = 'student', isLoading } = useQuery({
-    queryKey: [...profileKeys.detail(userId ?? ''), 'user-type'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('profile')
-        .select('user_type')
-        .eq('uuid', userId)
-        .single();
-      return data?.user_type ?? 'student';
-    },
+  const areAllAnswersNo = useMemo(
+    () =>
+      answers.every((answer, index) =>
+        index !== QUESTIONS.length - 1 ? answer === 'No' : answer === 'Yes',
+      ),
+    [answers],
+  );
+  const areAllAnswered = useMemo(
+    () => answers.every((answer) => answer !== null),
+    [answers],
+  );
+  const areAllUserDataFilled = !!(
+    physicalFitnessData.gender && physicalFitnessData.category
+  );
+
+  const { data: pftRecord, isLoading } = useQuery({
+    queryKey: pftKeys.session(userId ?? ''),
+    queryFn: () => fetchPftRecord(userId ?? ''),
     enabled: !!userId,
   });
 
+  useEffect(() => {
+    if (isLoading || userType !== 'teacher' || !userId) {
+      return;
+    }
+
+    void navigateTeacher();
+  }, [isLoading, userId, userType]);
+
   const navigateTeacher = async () => {
+    if (!userId) {
+      dispatch({ type: 'show-error', message: 'User not found.' });
+      return;
+    }
+
     const updatedData = {
       ...physicalFitnessData,
       isPARQFinished: true,
       finishedTestIndex: Array.from({ length: numberOfTests }, () => -1),
-    } as PFTSessionData;
+    } satisfies PFTSessionData;
+
     setPhysicalFitnessData(updatedData);
-    setDataToStorage('physicalFitnessData', updatedData);
-    const { error } = await supabase
-      .from('physical_fitness_test')
-      .update({ pre_physical_fitness_test: updatedData })
-      .eq('uuid', userId);
-    if (error) {
-      setErrorMessage('Failed to save test data. Please try again.');
-      setIsError(true);
+
+    try {
+      await savePftSession(userId, 'pre_physical_fitness_test', updatedData);
+    } catch {
+      dispatch({
+        type: 'show-error',
+        message: 'Failed to save test data. Please try again.',
+      });
       return;
     }
+
     navigate('/physical-fitness-test/test/0');
   };
 
-  const handleAnswerChange = (index: number, value: string) => {
-    const current = [...answers];
-    current[index] = value;
-    const allNo = current.every((a, i) => (i !== QUESTIONS.length - 1 ? a === 'No' : a === 'Yes'));
-    const allAnswered = current.every((a) => a !== null);
-    setAnswers(current);
-    setAreAllAnswersNo(allNo);
-    setAreAllAnswered(allAnswered);
+  const handleAnswerChange = (
+    index: number,
+    value: Exclude<ParqAnswer, null>,
+  ) => {
+    dispatch({
+      type: 'set-answer',
+      index,
+      value,
+    });
   };
 
   const handleSubmit = async () => {
-    setErrorMessage('');
-    if (userType === 'teacher') { await navigateTeacher(); return; }
-    if (areAllAnswered && areAllAnswersNo && areAllUserDataFilled) {
-      if (!userId) { setErrorMessage('User not found.'); setIsError(true); return; }
-      const { data: existing, error: fetchError } = await supabase
-        .from('physical_fitness_test')
-        .select('pre_physical_fitness_test, post_physical_fitness_test')
-        .eq('uuid', userId)
-        .single();
-      if (fetchError) { setErrorMessage('Failed to load test record.'); setIsError(true); return; }
-      const preFI = existing?.pre_physical_fitness_test?.finishedTestIndex ?? [];
-      const postFI = existing?.post_physical_fitness_test?.finishedTestIndex ?? [];
-      const max = Math.max(preFI.length, postFI.length);
-      let testType = '', testIndex = 0, newTest = true, testIndeces: number[] = [];
-      if (!preFI.includes(max - 1)) {
-        testType = 'pre_physical_fitness_test';
-        testIndex = preFI.findIndex((i: number) => i === -1);
-        newTest = testIndex === -1;
-        testIndeces = preFI;
-      } else if (!postFI.includes(max - 1)) {
-        testType = 'post_physical_fitness_test';
-        testIndex = postFI.findIndex((i: number) => i === -1);
-        newTest = testIndex === -1;
-        testIndeces = postFI;
-      } else {
-        setErrorMessage('You have already completed all tests.'); setIsError(true); return;
-      }
-      const updatedData = { ...physicalFitnessData, isPARQFinished: true, ...(!newTest && { finishedTestIndex: testIndeces }) } as PFTSessionData;
-      setPhysicalFitnessData(updatedData);
-      setDataToStorage('physicalFitnessData', updatedData);
-      const { error: updateError } = await supabase
-        .from('physical_fitness_test')
-        .update({ [testType]: updatedData })
-        .eq('uuid', userId);
-      if (updateError) { setErrorMessage('Failed to save test data.'); setIsError(true); return; }
-      navigate(`/physical-fitness-test/test/${testIndex === -1 ? 0 : testIndex}`);
-    } else {
-      if (!areAllAnswered) setErrorMessage('Make sure to answer all questions');
-      else if (!areAllAnswersNo) setErrorMessage('You currently cannot take the Physical Fitness Test, try again a different time');
-      else if (!areAllUserDataFilled) setErrorMessage('Please complete Student/User Data');
-      setIsError(true);
+    dispatch({ type: 'clear-error' });
+
+    if (userType === 'teacher') {
+      await navigateTeacher();
+      return;
     }
-  };
 
-  const handleInformationChange = (keyName: string, value: string) => {
-    const updatedData = { ...physicalFitnessData, [keyName]: value } as PFTSessionData;
+    if (!areAllAnswered) {
+      dispatch({
+        type: 'show-error',
+        message: 'Make sure to answer all questions',
+      });
+      return;
+    }
+
+    if (!areAllAnswersNo) {
+      dispatch({
+        type: 'show-error',
+        message:
+          'You currently cannot take the Physical Fitness Test, try again a different time',
+      });
+      return;
+    }
+
+    if (!areAllUserDataFilled) {
+      dispatch({
+        type: 'show-error',
+        message: 'Please complete Student/User Data',
+      });
+      return;
+    }
+
+    if (!userId) {
+      dispatch({ type: 'show-error', message: 'User not found.' });
+      return;
+    }
+
+    if (!pftRecord) {
+      dispatch({
+        type: 'show-error',
+        message: 'Failed to load test record.',
+      });
+      return;
+    }
+
+    const preFinishedIndexes =
+      pftRecord.pre_physical_fitness_test?.finishedTestIndex ?? [];
+    const postFinishedIndexes =
+      pftRecord.post_physical_fitness_test?.finishedTestIndex ?? [];
+
+    let testType: 'pre_physical_fitness_test' | 'post_physical_fitness_test';
+    let targetFinishedIndexes: number[];
+
+    if (!preFinishedIndexes.includes(preFinishedIndexes.length - 1)) {
+      testType = 'pre_physical_fitness_test';
+      targetFinishedIndexes = preFinishedIndexes;
+    } else if (!postFinishedIndexes.includes(postFinishedIndexes.length - 1)) {
+      testType = 'post_physical_fitness_test';
+      targetFinishedIndexes = postFinishedIndexes;
+    } else {
+      dispatch({
+        type: 'show-error',
+        message: 'You have already completed all tests.',
+      });
+      return;
+    }
+
+    const updatedData = {
+      ...physicalFitnessData,
+      isPARQFinished: true,
+      ...(targetFinishedIndexes.length > 0 && {
+        finishedTestIndex: targetFinishedIndexes,
+      }),
+    } satisfies PFTSessionData;
+
     setPhysicalFitnessData(updatedData);
-    setAreAllUserDataFilled(!!(updatedData.gender) && !!(updatedData.category));
+
+    try {
+      await savePftSession(userId, testType, updatedData);
+    } catch {
+      dispatch({
+        type: 'show-error',
+        message: 'Failed to save test data.',
+      });
+      return;
+    }
+
+    navigate(
+      `/physical-fitness-test/test/${getNextUnfinishedTestIndex(
+        targetFinishedIndexes,
+      )}`,
+    );
   };
 
-  if (isLoading || !userId) return <Loading />;
+  const handleInformationChange = (
+    keyName: 'gender' | 'category',
+    value: PFTGender | PFTCategory,
+  ) => {
+    updateField(keyName, value);
+  };
+
+  if (isLoading || !userId || userType === 'teacher') return <Loading />;
 
   return (
     <div id="physical-fitness-test-parq" className="w-full min-h-screen max-h-fit">
-      {isError && (
-        <AlertMessage text={errorMessage} onConfirm={() => setIsError(false)} onCancel={() => setIsError(false)} />
+      {errorMessage && (
+        <AlertMessage
+          text={errorMessage}
+          onConfirm={() => dispatch({ type: 'clear-error' })}
+          onCancel={() => dispatch({ type: 'clear-error' })}
+        />
       )}
       <PageHeading text="Physical Fitness Test" className="" />
       <div id="physical-fitness-test-parq-container" className="content-container">
@@ -160,16 +290,33 @@ export default function PhysicalActivityReadinessQuestionnaire() {
             <hr className="mb-7" />
             <div className="flex flex-row space-x-5">
               <p>Gender</p>
-              {['Male', 'Female'].map((g) => (
-                <label key={g}>
-                  <input type="radio" name="gender" value={g} onChange={(e) => handleInformationChange('gender', e.target.value)} />
-                  {g}
+              {(['Male', 'Female'] as const).map((genderOption) => (
+                <label key={genderOption}>
+                  <input
+                    type="radio"
+                    name="gender"
+                    value={genderOption}
+                    checked={physicalFitnessData.gender === genderOption}
+                    onChange={(event) =>
+                      handleInformationChange('gender', event.target.value as PFTGender)
+                    }
+                  />
+                  {genderOption}
                 </label>
               ))}
             </div>
             <label>
               <p>Category:</p>
-              <select onChange={(e) => handleInformationChange('category', e.target.value)} defaultValue={physicalFitnessData?.category ?? ''} className="border-1 border-[#8B8989]! w-full font-content px-1 rounded-sm mt-0.5">
+              <select
+                onChange={(event) =>
+                  handleInformationChange(
+                    'category',
+                    event.target.value as PFTCategory,
+                  )
+                }
+                value={physicalFitnessData.category}
+                className="border-1 border-[#8B8989]! w-full font-content px-1 rounded-sm mt-0.5"
+              >
                 <option disabled value="">--Select one option--</option>
                 <option value="elementaryBoys">Boy (Elementary 5-12 yrs old)</option>
                 <option value="elementaryGirls">Girl (Elementary 5-12 yrs old)</option>
@@ -186,10 +333,22 @@ export default function PhysicalActivityReadinessQuestionnaire() {
                 <li key={question} className="mb-4">
                   {question}
                   <div className="flex flex-col mt-2">
-                    {['Yes', 'No'].map((opt) => (
-                      <label key={opt} className="mb-2 lg:mb-0">
-                        <input type="radio" name={`radioQuestion${index}`} value={opt} className="mr-2" onChange={(e) => handleAnswerChange(index, e.target.value)} />
-                        {opt}
+                    {(['Yes', 'No'] as const).map((option) => (
+                      <label key={option} className="mb-2 lg:mb-0">
+                        <input
+                          type="radio"
+                          name={`radioQuestion${index}`}
+                          value={option}
+                          checked={answers[index] === option}
+                          className="mr-2"
+                          onChange={(event) =>
+                            handleAnswerChange(
+                              index,
+                              event.target.value as Exclude<ParqAnswer, null>,
+                            )
+                          }
+                        />
+                        {option}
                       </label>
                     ))}
                   </div>

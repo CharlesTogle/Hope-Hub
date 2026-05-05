@@ -16,7 +16,6 @@ interface ResultSectionProps {
   ) => void;
   handleSubmit: () => void;
   handleBack: () => void;
-  currentTime: string;
   unit?: string;
   isTeacher: boolean;
   testNumber: number;
@@ -28,7 +27,6 @@ const ResultSection = ({
   handleResultChange,
   handleSubmit,
   handleBack,
-  currentTime,
   unit,
   isTeacher,
   testNumber,
@@ -50,7 +48,7 @@ const ResultSection = ({
         <div id='inputs' className={`ml-2 grid ${!isTeacher && 'grid-cols-2'}`}>
           {isTeacher && (
             <div className='w-full text-center h-full xl:p-10 lg:p-5 md:px-20 sm:p-2 bg-gray-800 flex justify-center items-center font-semibold text-white'>
-              <p>Teachers are to conduct exercises only</p>
+              <p>Teachers are to conduct PFTs only</p>
             </div>
           )}
           {!isTeacher && (
@@ -78,10 +76,8 @@ const ResultSection = ({
                           : 'number'
                       }
                       min={
-                        label === 'Time Started'
-                          ? ''
-                          : label === 'Time End'
-                          ? currentTime
+                        label === 'Time Started' || label === 'Time End'
+                          ? undefined
                           : '-1'
                       }
                       max={
