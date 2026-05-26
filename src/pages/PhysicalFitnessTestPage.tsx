@@ -120,7 +120,6 @@ export function PhysicalFitnessTestPage() {
       <PageHeading text="Physical Fitness Test" />
       <div id="physical-fitness-content" className="content-container w-full! mb-10">
         <PhysicalFitnessTest
-          physicalFitnessData={currentSessionData}
           index={testIndex}
           setIsTimeout={setIsTimeout}
           testType={pftStatus?.testType ?? 'pre_physical_fitness_test'}

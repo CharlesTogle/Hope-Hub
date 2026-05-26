@@ -33,7 +33,7 @@ const TipsAndInterpretation = ({
         <h2 className='font-content text-sm font-semibold'>Tips to Improve</h2>
         <ul className='list-decimal ml-6 font-content text-sm font-medium'>
           {tips && tips.length > 0 ? (
-            tips.map((tip, index) => <li key={index}>{tip}</li>)
+            tips.map((tip) => <li key={tip}>{tip}</li>)
           ) : (
             <li>No Available Tip</li>
           )}

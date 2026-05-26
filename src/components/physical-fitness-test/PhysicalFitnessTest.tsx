@@ -22,7 +22,6 @@ import type { UserType } from '@/types/auth';
 interface PhysicalFitnessTestProps {
   index: string;
   setIsTimeout: (value: boolean) => void;
-  physicalFitnessData: PFTSessionData;
   testType: PFTColumnName;
   userType: UserType;
 }
@@ -168,7 +167,6 @@ const InstructionsGroup = memo(function InstructionsGroup({
 export default function PhysicalFitnessTest({
   index,
   setIsTimeout,
-  physicalFitnessData,
   testType,
   userType,
 }: PhysicalFitnessTestProps) {
@@ -177,6 +175,7 @@ export default function PhysicalFitnessTest({
     undefined,
     createInitialViewState,
   );
+  const physicalFitnessData = usePhysicalFitnessStore((state) => state.sessionData);
   const setSessionData = usePhysicalFitnessStore((state) => state.setSessionData);
   const userId = useAuthStore((state) => state.profile?.uuid ?? null);
   const navigate = useNavigate();
