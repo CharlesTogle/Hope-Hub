@@ -14,6 +14,8 @@ export default async function youtube(
   params: YouTubeParams = {},
 ): Promise<JsonObject> {
   const baseURL = 'https://www.googleapis.com/youtube/v3';
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 15000);
   const query = new URLSearchParams({
     key: KEY,
     ...Object.fromEntries(
@@ -22,7 +24,20 @@ export default async function youtube(
   }).toString();
   const url = `${baseURL}/${endpoint}?${query}`;
 
-  const res = await fetch(url);
+  let res: Response;
+
+  try {
+    res = await fetch(url, { signal: controller.signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('YouTube request timed out');
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
   const data = (await res.json()) as JsonObject;
 
   if (!res.ok) {

@@ -31,7 +31,7 @@ export const UpperBodyVideos: WorkoutVideo[] = [
       do: ['Keep your back straight.', 'Press the weights slowly.'],
       dont: ["Don't arch your back.", "Don't lock your elbows."],
     },
-    videoLink: 'https://www.youtube.com/embed/MRgAb2W5ftw?si=2SQ79DgnCLoZ0w6U',
+    videoLink: 'https://www.youtube.com/embed/ga_BY_AM8Sk?si=oi9qTpWw1mYaD5h-',
     uploadDate: '2025-07-23T14:00:00.000Z',
   },
   {
@@ -54,7 +54,7 @@ export const UpperBodyVideos: WorkoutVideo[] = [
         "Don't allow the weights to slam down.",
       ],
     },
-    videoLink: 'https://www.youtube.com/embed/vPj-_ebcBZI?si=BZpZa4ygCXTPvHJY',
+    videoLink: 'https://www.youtube.com/embed/H1c1Pmb1cvc?si=t8122qQHtCbnskVo',
     uploadDate: '2025-07-23T14:00:00.000Z',
   },
   {
@@ -77,7 +77,7 @@ export const UpperBodyVideos: WorkoutVideo[] = [
         "Don't use momentum or swing your body.",
       ],
     },
-    videoLink: 'https://www.youtube.com/embed/WhCL8oTIU_A?si=Z6G0AxL5SqBxDrew',
+    videoLink: 'https://www.youtube.com/embed/3YbzkFrXEek?si=IJDRAFwybBUbtcZE',
     uploadDate: '2025-07-23T14:00:00.000Z',
   },
   {
@@ -92,7 +92,7 @@ export const UpperBodyVideos: WorkoutVideo[] = [
       do: ['Sit up tall.', 'Pull with your back muscles.'],
       dont: ["Don't lean back too far.", "Don't pull behind your head."],
     },
-    videoLink: 'https://www.youtube.com/embed/6maIaHYtLd4?si=UksueGMNKRf_mQ60',
+    videoLink: 'https://www.youtube.com/embed/maRhBqMBvCw?si=S4HK2kJbxUP_o08I',
     uploadDate: '2025-07-23T14:00:00.000Z',
   },
   {
@@ -100,7 +100,7 @@ export const UpperBodyVideos: WorkoutVideo[] = [
       'https://pcgsdfbkpnfgcvdopgzz.supabase.co/storage/v1/object/public/WorkoutZoneCovers/cover-triceps-pulldown.jpg',
     url: 'triceps-pulldown',
     duration: '00:33',
-    title: 'Triceps Pulldown',
+    title: 'Triceps Pushdown',
     description: {
       howToDoIt:
         'Stand at a cable machine with a bar or rope. Push it down until your arms are straight, then let it come back up slowly.',
@@ -110,7 +110,7 @@ export const UpperBodyVideos: WorkoutVideo[] = [
       ],
       dont: ["Don't move your shoulders.", "Don't lean too far forward."],
     },
-    videoLink: 'https://www.youtube.com/embed/8uy5xxsWOQI?si=oe4DAE2DmFmN6cDd',
+    videoLink: 'https://www.youtube.com/embed/Fj0KSvKi8Po?si=tywkHvXX246bAx98',
     uploadDate: '2025-07-23T14:00:00.000Z',
   },
   {
@@ -125,7 +125,7 @@ export const UpperBodyVideos: WorkoutVideo[] = [
       do: ['Keep your elbows close to your body.', 'Lift slowly.'],
       dont: ["Don't swing your body.", "Don't use your shoulders."],
     },
-    videoLink: 'https://www.youtube.com/embed/C8uCppHWkH4?si=x4HUfRiRpPdifPxy',
+    videoLink: 'https://www.youtube.com/embed/Siucbbk0Oxs?si=sl87yaCZGwIQaFn1',
     uploadDate: '2025-07-23T14:00:00.000Z',
   },
   {
@@ -172,7 +172,7 @@ export const LowerBodyVideos: WorkoutVideo[] = [
         "Don't hyperextend your back at the top.",
       ],
     },
-    videoLink: 'https://www.youtube.com/embed/NAi0ScLZtOk?si=EgE96vupI1y_CnV_',
+    videoLink: 'https://www.youtube.com/embed/r_TBbbX8wF0?si=0IlKzaW9Xeq7DnjP',
     uploadDate: '2025-07-23T14:00:00.000Z',
   },
   {
@@ -195,7 +195,7 @@ export const LowerBodyVideos: WorkoutVideo[] = [
         "Don't arch or round your back.",
       ],
     },
-    videoLink: 'https://www.youtube.com/embed/XI0bsuhp8us?si=ZpyUcV38WcQ7Y2UD',
+    videoLink: 'https://www.youtube.com/embed/WJKuVjXnVZg?si=IxjWckzdFOPaB7yP',
     uploadDate: '2025-07-23T14:00:00.000Z',
   },
   {
@@ -241,7 +241,7 @@ export const LowerBodyVideos: WorkoutVideo[] = [
         'Rush the movement or lose balance.',
       ],
     },
-    videoLink: 'https://youtube.com/embed/ckqDnz6149I?si=5mM1kl7gBWJ9c6IT',
+    videoLink: 'https://www.youtube.com/embed/BKTAwDzybPI?si=L15IY3EqOtIfUtMA',
     uploadDate: '2025-07-23T14:00:00.000Z',
   },
   {
