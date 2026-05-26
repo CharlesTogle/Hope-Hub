@@ -1,32 +1,79 @@
+import { useReducer, useRef } from 'react';
 import { getBMI } from '@/services/Calculations';
 import { highlightedData } from '@/utilities/CalculatorData';
 import Container from '@/components/health-calculators/Container';
 import CalculatorContainer from '@/components/health-calculators/CalculatorContainer';
 import { CalculatorDetails } from '@/components/health-calculators/CalculatorDetails';
-import { useState, useRef } from 'react';
 import CalculatorInput from '@/components/health-calculators/CalculatorInput';
 import Content from '@/components/health-calculators/Content';
 import RowContainer from '@/components/health-calculators/RowContainer';
 import Citation from '@/components/Citations';
-
 import { getBMICategory } from '@/utilities/bmi-category';
 import type { HeightUnit, WeightUnit } from '@/types/calculations';
 
-export default function BMICalculator () {
-  const [heightUnit, setHeightUnit] = useState<HeightUnit>('cm');
-  const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg');
-  const [height, setHeight] = useState('');
-  const [weight, setWeight] = useState('');
-  const [bmiResult, setBmiResult] = useState<number | null>(null);
-  const [bmiCategory, setBmiCategory] = useState('No data');
-  const [bmiMedicalInterpretation, setBmiMedicalInterpretation] = useState(
-    'Perform a BMI calculation to receive personalized medical interpretation based on your results. This will include information about health risks, recommended actions, and medical considerations specific to your BMI category.',
-  );
-  const [bmiStatisticalInterpretation, setBmiStatisticalInterpretation] =
-    useState(
-      'After calculating your BMI, you will see how your result compares to population distributions and statistical norms. This provides context for understanding where your BMI falls within broader health statistics.',
-    );
+const DEFAULT_BMI_MEDICAL_INTERPRETATION =
+  'Perform a BMI calculation to receive personalized medical interpretation based on your results. This will include information about health risks, recommended actions, and medical considerations specific to your BMI category.';
+const DEFAULT_BMI_STATISTICAL_INTERPRETATION =
+  'After calculating your BMI, you will see how your result compares to population distributions and statistical norms. This provides context for understanding where your BMI falls within broader health statistics.';
 
+interface BMIState {
+  heightUnit: HeightUnit;
+  weightUnit: WeightUnit;
+  height: string;
+  weight: string;
+  bmiResult: number | null;
+  bmiCategory: string;
+  bmiMedicalInterpretation: string;
+  bmiStatisticalInterpretation: string;
+}
+
+type BMIAction =
+  | { type: 'set-value'; field: 'height' | 'weight'; value: string }
+  | {
+      type: 'set-unit';
+      field: 'heightUnit' | 'weightUnit';
+      value: HeightUnit | WeightUnit;
+    }
+  | {
+      type: 'set-results';
+      value: Pick<
+        BMIState,
+        | 'bmiResult'
+        | 'bmiCategory'
+        | 'bmiMedicalInterpretation'
+        | 'bmiStatisticalInterpretation'
+      >;
+    }
+  | { type: 'reset' };
+
+const initialState: BMIState = {
+  heightUnit: 'cm',
+  weightUnit: 'kg',
+  height: '',
+  weight: '',
+  bmiResult: null,
+  bmiCategory: 'No data',
+  bmiMedicalInterpretation: DEFAULT_BMI_MEDICAL_INTERPRETATION,
+  bmiStatisticalInterpretation: DEFAULT_BMI_STATISTICAL_INTERPRETATION,
+};
+
+function reducer(state: BMIState, action: BMIAction): BMIState {
+  switch (action.type) {
+    case 'set-value':
+      return { ...state, [action.field]: action.value };
+    case 'set-unit':
+      return { ...state, [action.field]: action.value };
+    case 'set-results':
+      return { ...state, ...action.value };
+    case 'reset':
+      return initialState;
+    default:
+      return state;
+  }
+}
+
+export default function BMICalculator() {
+  const [state, dispatch] = useReducer(reducer, initialState);
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const { BMI } = highlightedData;
   const {
@@ -57,6 +104,7 @@ export default function BMICalculator () {
     const categoryKey = category
       .toLowerCase()
       .replace(' weight', '') as keyof typeof medicalInterpretation;
+
     return {
       medical:
         medicalInterpretation[categoryKey] || 'No interpretation available',
@@ -64,29 +112,39 @@ export default function BMICalculator () {
         statisticalInterpretation[categoryKey] || 'No interpretation available',
     };
   };
+
   const handleCalculate = () => {
-    if (!height || !weight || Number(height) <= 0 || Number(weight) <= 0) {
+    if (
+      !state.height ||
+      !state.weight ||
+      Number(state.height) <= 0 ||
+      Number(state.weight) <= 0
+    ) {
       alert('Please enter valid height and weight values');
       return;
     }
 
     const bmi = getBMI(
-      parseFloat(height),
-      parseFloat(weight),
-      heightUnit,
-      weightUnit,
+      parseFloat(state.height),
+      parseFloat(state.weight),
+      state.heightUnit,
+      state.weightUnit,
     );
 
     const roundedBmi = Math.round(bmi * 10) / 10;
     const category = getBMICategory(roundedBmi);
     const interpretations = getBMIInterpretations(category);
 
-    setBmiResult(roundedBmi);
-    setBmiCategory(category);
-    setBmiMedicalInterpretation(interpretations.medical);
-    setBmiStatisticalInterpretation(interpretations.statistical);
+    dispatch({
+      type: 'set-results',
+      value: {
+        bmiResult: roundedBmi,
+        bmiCategory: category,
+        bmiMedicalInterpretation: interpretations.medical,
+        bmiStatisticalInterpretation: interpretations.statistical,
+      },
+    });
 
-    // Scroll to results on mobile after successful calculation
     if (resultsRef.current) {
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({
@@ -96,17 +154,9 @@ export default function BMICalculator () {
       }, 100);
     }
   };
+
   const handleClear = () => {
-    setHeight('');
-    setWeight('');
-    setBmiResult(null);
-    setBmiCategory('No data');
-    setBmiMedicalInterpretation(
-      'Perform a BMI calculation to receive personalized medical interpretation based on your results. This will include information about health risks, recommended actions, and medical considerations specific to your BMI category.',
-    );
-    setBmiStatisticalInterpretation(
-      'After calculating your BMI, you will see how your result compares to population distributions and statistical norms. This provides context for understanding where your BMI falls within broader health statistics.',
-    );
+    dispatch({ type: 'reset' });
   };
 
   const citations = [
@@ -139,36 +189,52 @@ export default function BMICalculator () {
   return (
     <>
       <CalculatorDetails
-        name='Body Mass Index Calculator'
+        name="Body Mass Index Calculator"
         details={description}
       />
       <RowContainer>
         <CalculatorContainer
-          heading='Body Mass Index (BMI) Calculator'
+          heading="Body Mass Index (BMI) Calculator"
           onCalculate={handleCalculate}
           onClear={handleClear}
         >
-          <div className='flex flex-col gap-3'>
+          <div className="flex flex-col gap-3">
             <CalculatorInput
-              label='Height'
-              setUnit={(value) => setHeightUnit(value as HeightUnit)}
-              unit={heightUnit}
-              setValue={setHeight}
-              value={height}
+              label="Height"
+              setUnit={(value) =>
+                dispatch({
+                  type: 'set-unit',
+                  field: 'heightUnit',
+                  value: value as HeightUnit,
+                })
+              }
+              unit={state.heightUnit}
+              setValue={(value) =>
+                dispatch({ type: 'set-value', field: 'height', value })
+              }
+              value={state.height}
               units={heightUnits}
             />
             <CalculatorInput
-              label='Weight'
-              setUnit={(value) => setWeightUnit(value as WeightUnit)}
-              unit={weightUnit}
-              setValue={setWeight}
-              value={weight}
+              label="Weight"
+              setUnit={(value) =>
+                dispatch({
+                  type: 'set-unit',
+                  field: 'weightUnit',
+                  value: value as WeightUnit,
+                })
+              }
+              unit={state.weightUnit}
+              setValue={(value) =>
+                dispatch({ type: 'set-value', field: 'weight', value })
+              }
+              value={state.weight}
               units={weightUnits}
             />
-          </div>{' '}
+          </div>
         </CalculatorContainer>
-        <Container heading='Instructions'>
-          <ol className='list-decimal text-justify font-content mx-2 mb-3 md:mb-5 text-xs md:text-base'>
+        <Container heading="Instructions">
+          <ol className="list-decimal text-justify font-content mx-2 mb-3 md:mb-5 text-xs md:text-base">
             {instructions.map((instruction) => (
               <li
                 dangerouslySetInnerHTML={{ __html: instruction }}
@@ -179,36 +245,36 @@ export default function BMICalculator () {
         </Container>
       </RowContainer>
       <RowContainer>
-        <Container heading='Results' ref={resultsRef}>
-          <p className='font-content w-full text-center text-xs md:text-base'>
-            BMI: {bmiResult || '0.00'} kg/m²{' '}
-            <span className={getBMICategoryColor(bmiCategory)}>
-              ({bmiCategory})
+        <Container heading="Results" ref={resultsRef}>
+          <p className="font-content w-full text-center text-xs md:text-base">
+            BMI: {state.bmiResult || '0.00'} kg/m²{' '}
+            <span className={getBMICategoryColor(state.bmiCategory)}>
+              ({state.bmiCategory})
             </span>
           </p>
         </Container>
-        <Container heading='BMI POINTERS' className='w-1/2'>
-          <ol className='list-decimal font-content mx-2 mb-3 md:mb-5 text-xs md:text-base'>
+        <Container heading="BMI POINTERS" className="w-1/2">
+          <ol className="list-decimal font-content mx-2 mb-3 md:mb-5 text-xs md:text-base">
             <li>Healthy Range: 18.5 – 24.9</li>
             <li>Underweight: Below 18.5</li>
             <li>Overweight: 25.0 – 29.9</li>
             <li>Obese: 30.0 and above</li>
           </ol>
-          <p className='font-content text-red mt-2 text-xs md:text-base'>
+          <p className="font-content text-red mt-2 text-xs md:text-base">
             Note: BMI doesn't account for muscle mass or body composition.
           </p>
         </Container>
       </RowContainer>
-      <div className='w-full flex flex-col gap-10 mt-10 sm:text-xs md:text-sm'>
+      <div className="w-full flex flex-col gap-10 mt-10 sm:text-xs md:text-sm">
         <Content
-          content={bmiMedicalInterpretation}
-          title='Medical Interpretation'
+          content={state.bmiMedicalInterpretation}
+          title="Medical Interpretation"
         />
         <Content
-          content={bmiStatisticalInterpretation}
-          title='Statistical Interpretation'
-        />{' '}
-        <Citation citations={citations} title='References' />
+          content={state.bmiStatisticalInterpretation}
+          title="Statistical Interpretation"
+        />
+        <Citation citations={citations} title="References" />
       </div>
     </>
   );
