@@ -21,12 +21,8 @@ type DashboardQuizStatus = Extract<QuizStatus, 'Done' | 'Pending' | 'Locked'>;
 export default function QuizDashboard() {
   const [activeFilter, setActiveFilter] = useState<DashboardFilter>('All');
   const filters: DashboardFilter[] = ['All', 'Done', 'Pending', 'Locked'];
-  const { profile, isLoading: authLoading, hydrate } = useAuthStore();
+  const { profile, isLoading: authLoading } = useAuthStore();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    hydrate();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!authLoading && !profile) navigate('/auth/login');

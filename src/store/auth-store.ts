@@ -7,7 +7,9 @@ interface AuthState {
   profile: Profile | null;
   isLoading: boolean;
 
-  hydrate: () => Promise<void>;
+  setAuthState: (auth: { userId: string | null; profile: Profile | null }) => void;
+  setIsLoading: (isLoading: boolean) => void;
+  clearAuthState: () => void;
   logout: () => Promise<void>;
 }
 
@@ -20,25 +22,16 @@ const initialState = {
 export const useAuthStore = create<AuthState>((set) => ({
   ...initialState,
 
-  hydrate: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      set({ isLoading: false });
-      return;
-    }
-
-    const { data } = await supabase
-      .from('profile')
-      .select('uuid, user_type, full_name, email')
-      .eq('uuid', session.user.id)
-      .single();
-
+  setAuthState: ({ userId, profile }) =>
     set({
-      userId: session.user.id,
-      profile: data as Profile | null,
+      userId,
+      profile,
       isLoading: false,
-    });
-  },
+    }),
+
+  setIsLoading: (isLoading) => set({ isLoading }),
+
+  clearAuthState: () => set(initialState),
 
   logout: async () => {
     await supabase.auth.signOut();

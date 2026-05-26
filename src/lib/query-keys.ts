@@ -6,6 +6,11 @@ export const quizKeys = {
   leaderboard: (id: number | string) => [...quizKeys.all, 'leaderboard', id] as const,
 };
 
+export const authKeys = {
+  all: ['auth'] as const,
+  current: () => [...authKeys.all, 'current'] as const,
+};
+
 export const profileKeys = {
   all: ['profile'] as const,
   detail: (id: string) => [...profileKeys.all, id] as const,

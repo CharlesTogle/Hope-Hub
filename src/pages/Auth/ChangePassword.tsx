@@ -55,20 +55,10 @@ export default function ChangePassword() {
   const [searchParams] = useSearchParams();
   const [state, dispatch] = useReducer(reducer, initialState);
   const accessToken = searchParams.get('access_token') ?? '';
+  const refreshToken = searchParams.get('refresh_token') ?? '';
   const type = searchParams.get('type');
   const navigate = useNavigate();
-  const sessionInitialized = useRef(false);
-
-  useEffect(() => {
-    if (sessionInitialized.current || type !== 'recovery' || !accessToken) {
-      return;
-    }
-    sessionInitialized.current = true;
-    void supabase.auth.setSession({
-      access_token: accessToken,
-      refresh_token: searchParams.get('refresh_token') ?? '',
-    });
-  }, [accessToken, searchParams, type]);
+  const redirectIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handlePasswordChange = (value: string) => {
     dispatch({ type: 'set-field', field: 'password', value });
@@ -101,6 +91,33 @@ export default function ChangePassword() {
     }
 
     dispatch({ type: 'set-loading', value: true });
+
+    if (type === 'recovery') {
+      if (!accessToken || !refreshToken) {
+        dispatch({
+          type: 'set-error',
+          value: 'This password reset link is invalid or incomplete.',
+        });
+        dispatch({ type: 'set-loading', value: false });
+        return;
+      }
+
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+
+      if (sessionError) {
+        console.error('ChangePassword setSession failed', { sessionError });
+        dispatch({
+          type: 'set-error',
+          value: 'This password reset link is invalid or has expired.',
+        });
+        dispatch({ type: 'set-loading', value: false });
+        return;
+      }
+    }
+
     const { error } = await supabase.auth.updateUser({
       password: state.password,
     });
@@ -114,20 +131,26 @@ export default function ChangePassword() {
       dispatch({ type: 'set-loading', value: false });
     } else {
       let counter = 3;
-      const countdown = setInterval(() => {
+      redirectIntervalRef.current = setInterval(() => {
         dispatch({
           type: 'set-success',
           value: `Password has been changed successfully. Redirecting to login in ${counter}s`,
         });
         counter--;
         if (counter <= 0) {
-          clearInterval(countdown);
+          clearInterval(redirectIntervalRef.current ?? undefined);
           navigate('/auth/login');
         }
       }, 1000);
       dispatch({ type: 'set-loading', value: false });
     }
   };
+
+  useEffect(() => {
+    return () => {
+      clearInterval(redirectIntervalRef.current ?? undefined);
+    };
+  }, []);
 
   return (
     <AuthContainer>
