@@ -4,6 +4,7 @@ import {
   createMockClass,
   createMockLectureProgress,
   createMockPhysicalFitnessTest,
+  createMockPftSummary,
   createMockProfile,
   createMockQuiz,
   createMockQuizProgress,
@@ -17,6 +18,8 @@ import type { QuizProgressRow, QuizRow } from '../../src/types/quiz';
 type LectureProgressResponse = ReturnType<typeof createMockLectureProgress>;
 type TeacherClassRow = Database['public']['Tables']['teacher_class_code']['Row'];
 type PhysicalFitnessTestRow = Database['public']['Tables']['physical_fitness_test']['Row'];
+type PftSummaryRow =
+  Database['public']['Functions']['get_pft_summary_for_viewer']['Returns'][number];
 
 interface MockQuizDataInput {
   quizzes?: QuizRow[];
@@ -34,6 +37,7 @@ interface CustomFixtures {
   mockQuizData: (input?: MockQuizDataInput) => Promise<void>;
   mockTeacherClasses: (classes?: TeacherClassRow[]) => Promise<void>;
   mockPhysicalFitnessTest: (data?: PhysicalFitnessTestRow) => Promise<void>;
+  mockPftSummary: (data?: PftSummaryRow | null) => Promise<void>;
   mockStudentClassCode: (classCode?: string | null) => Promise<void>;
 }
 
@@ -193,10 +197,31 @@ export const test = base.extend<CustomFixtures>({
       const data = classes ?? [createMockClass()];
 
       await page.route('**/rest/v1/teacher_class_code**', async (route) => {
+        const url = new URL(route.request().url());
+        const classCodeFilter = url.searchParams.get('class_code');
+        const uuidFilter = url.searchParams.get('uuid');
+        const accept = route.request().headers().accept ?? '';
+        const isSingle = accept.includes('vnd.pgrst.object');
+        let filtered = data;
+
+        if (classCodeFilter?.startsWith('eq.')) {
+          filtered = filtered.filter(
+            (row) => row.class_code === classCodeFilter.slice(3),
+          );
+        }
+
+        if (uuidFilter?.startsWith('eq.')) {
+          filtered = filtered.filter((row) => row.uuid === uuidFilter.slice(3));
+        }
+
         await route.fulfill({
           status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(data),
+          contentType: isSingle
+            ? 'application/vnd.pgrst.object+json'
+            : 'application/json',
+          body: isSingle
+            ? JSON.stringify(filtered[0] ?? null)
+            : JSON.stringify(filtered),
         });
       });
     };
@@ -223,17 +248,41 @@ export const test = base.extend<CustomFixtures>({
 
     await use(mock);
   },
+  mockPftSummary: async ({ page }, use) => {
+    const mock = async (data?: PftSummaryRow | null) => {
+      const summary = data ?? createMockPftSummary();
+
+      await page.route(
+        '**/rest/v1/rpc/get_pft_summary_for_viewer**',
+        async (route) => {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(summary ? [summary] : []),
+          });
+        },
+      );
+    };
+
+    await use(mock);
+  },
   mockStudentClassCode: async ({ page }, use) => {
     const mock = async (classCode: string | null = 'CLASS123') => {
       await page.route('**/rest/v1/student_class_code**', async (route) => {
+        const accept = route.request().headers().accept ?? '';
+        const isSingle = accept.includes('vnd.pgrst.object');
+        const rows = classCode
+          ? [{ uuid: testUsers.student.id, class_code: classCode }]
+          : [];
+
         await route.fulfill({
           status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(
-            classCode
-              ? [{ uuid: testUsers.student.id, class_code: classCode }]
-              : [],
-          ),
+          contentType: isSingle
+            ? 'application/vnd.pgrst.object+json'
+            : 'application/json',
+          body: isSingle
+            ? JSON.stringify(rows[0] ?? null)
+            : JSON.stringify(rows),
         });
       });
     };

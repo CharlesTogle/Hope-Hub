@@ -1,6 +1,9 @@
 import { test, expect } from '../../fixtures';
 import { APP_ROUTES } from '../../config/routes';
-import { createMockPftSession } from '../../helpers/test-data';
+import {
+  createMockPftSession,
+  createMockPftSummary,
+} from '../../helpers/test-data';
 
 test.describe('Physical Fitness Test — PAR-Q', () => {
   test('PAR-Q page loads for student', async ({
@@ -217,42 +220,108 @@ test.describe('Physical Fitness Test — Summary', () => {
     page,
     studentUser,
     setAuthSession,
-    mockPhysicalFitnessTest,
+    mockPftSummary,
   }) => {
     await setAuthSession(studentUser);
-    await mockPhysicalFitnessTest({
-      uuid: studentUser.id,
-      pre_physical_fitness_test: createMockPftSession(),
-      post_physical_fitness_test: null,
-    });
+    await mockPftSummary(
+      createMockPftSummary({
+        full_name: studentUser.fullName,
+        email: studentUser.email,
+        pft_data: createMockPftSession(),
+      }),
+    );
 
     await page.goto(APP_ROUTES.physicalFitnessTest.preSummary);
     await page.waitForLoadState('networkidle');
 
     await expect(page.locator('body')).toBeVisible();
+    await expect(page.getByText('Student Information')).toBeVisible();
+    await expect(page.getByText(studentUser.fullName)).toBeVisible();
     expect(page.url()).toContain('pre-test');
+  });
+
+  test('teacher can load a student summary from the class route', async ({
+    page,
+    teacherUser,
+    studentUser,
+    setAuthSession,
+    mockTeacherClasses,
+    mockPftSummary,
+  }) => {
+    await setAuthSession(teacherUser);
+    await mockTeacherClasses();
+    await mockPftSummary(
+      createMockPftSummary({
+        full_name: studentUser.fullName,
+        email: studentUser.email,
+        pft_data: createMockPftSession(),
+      }),
+    );
+
+    await page.goto(
+      APP_ROUTES.physicalFitnessTest.teacherSummary(
+        'CLASS123',
+        'pre-test',
+        studentUser.id,
+      ),
+    );
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.locator('body')).toBeVisible();
+    await expect(page.getByText('Student Information')).toBeVisible();
+    await expect(page.getByText(studentUser.fullName)).toBeVisible();
+    expect(page.url()).toContain('/dashboard/view-class/CLASS123/');
+  });
+
+  test('student is redirected away from the teacher-only summary route', async ({
+    page,
+    studentUser,
+    setAuthSession,
+    mockLectureProgress,
+    mockQuizData,
+    mockPhysicalFitnessTest,
+    mockStudentClassCode,
+  }) => {
+    await setAuthSession(studentUser);
+    await mockLectureProgress();
+    await mockQuizData();
+    await mockPhysicalFitnessTest();
+    await mockStudentClassCode();
+
+    await page.goto(
+      APP_ROUTES.physicalFitnessTest.teacherSummary(
+        'CLASS123',
+        'pre-test',
+        'other-student-uuid',
+      ),
+    );
+    await page.waitForLoadState('networkidle');
+
+    await expect(page).toHaveURL(new RegExp(`${APP_ROUTES.dashboard}$`));
   });
 
   test('post-test summary page loads when post-test exists', async ({
     page,
     studentUser,
     setAuthSession,
-    mockPhysicalFitnessTest,
+    mockPftSummary,
   }) => {
     await setAuthSession(studentUser);
-    await mockPhysicalFitnessTest({
-      uuid: studentUser.id,
-      pre_physical_fitness_test: createMockPftSession(),
-      post_physical_fitness_test: createMockPftSession({
-        bmiWeight: {
-          title: 'BMI (Weight)',
-          record: '68',
-          timeStarted: '08:00',
-          timeEnd: '08:05',
-          classification: 'No data available',
-        },
+    await mockPftSummary(
+      createMockPftSummary({
+        full_name: studentUser.fullName,
+        email: studentUser.email,
+        pft_data: createMockPftSession({
+          bmiWeight: {
+            title: 'BMI (Weight)',
+            record: '68',
+            timeStarted: '08:00',
+            timeEnd: '08:05',
+            classification: 'No data available',
+          },
+        }),
       }),
-    });
+    );
 
     await page.goto(APP_ROUTES.physicalFitnessTest.postSummary);
     await page.waitForLoadState('networkidle');
@@ -265,20 +334,23 @@ test.describe('Physical Fitness Test — Summary', () => {
     page,
     studentUser,
     setAuthSession,
-    mockPhysicalFitnessTest,
+    mockPftSummary,
   }) => {
     await setAuthSession(studentUser);
-    await mockPhysicalFitnessTest({
-      uuid: studentUser.id,
-      pre_physical_fitness_test: createMockPftSession(),
-      post_physical_fitness_test: null,
-    });
+    await mockPftSummary(
+      createMockPftSummary({
+        full_name: studentUser.fullName,
+        email: studentUser.email,
+        pft_data: createMockPftSession(),
+      }),
+    );
 
     await page.goto(APP_ROUTES.physicalFitnessTest.preSummary);
     await page.waitForLoadState('networkidle');
 
-    // Should show BMI, Cardiovascular Endurance, Strength, Flexibility sections
-    const pageContent = await page.textContent('body');
-    expect(pageContent).toBeTruthy();
+    await expect(page.getByText('A. Body Mass Index')).toBeVisible();
+    await expect(page.getByText('B. Cardiovascular Endurance')).toBeVisible();
+    await expect(page.getByText('C. Strength')).toBeVisible();
+    await expect(page.getByText('D. Flexibility')).toBeVisible();
   });
 });

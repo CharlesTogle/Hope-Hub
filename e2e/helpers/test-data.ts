@@ -21,6 +21,8 @@ export interface TestUser {
 type ProfileRow = Database['public']['Tables']['profile']['Row'];
 type TeacherClassRow = Database['public']['Tables']['teacher_class_code']['Row'];
 type PhysicalFitnessTestRow = Database['public']['Tables']['physical_fitness_test']['Row'];
+type PftSummaryRow =
+  Database['public']['Functions']['get_pft_summary_for_viewer']['Returns'][number];
 
 export const testUsers: Record<'student' | 'teacher', TestUser> = {
   student: {
@@ -286,6 +288,17 @@ export function createMockPhysicalFitnessTest(
     uuid: testUsers.student.id,
     pre_physical_fitness_test: null,
     post_physical_fitness_test: null,
+    ...overrides,
+  };
+}
+
+export function createMockPftSummary(
+  overrides: Partial<PftSummaryRow> = {},
+): PftSummaryRow {
+  return {
+    full_name: testUsers.student.fullName,
+    email: testUsers.student.email,
+    pft_data: createMockPftSession(),
     ...overrides,
   };
 }

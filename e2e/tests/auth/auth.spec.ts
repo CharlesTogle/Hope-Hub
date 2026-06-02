@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures';
 import { APP_ROUTES } from '../../config/routes';
+import { createMockProfile, createMockSession } from '../../helpers/test-data';
 
 test.describe('Auth — Login', () => {
   test('login page renders correctly', async ({ page }) => {
@@ -76,7 +77,7 @@ test.describe('Auth — Login', () => {
     expect(password).toBe('password123');
   });
 
-  test('failed login shows error message', async ({ page }) => {
+  test('failed login stays on the login page and shows the auth error message', async ({ page }) => {
     await page.route('**/auth/v1/token**', (route) => {
       route.fulfill({
         status: 400,
@@ -91,10 +92,16 @@ test.describe('Auth — Login', () => {
     await page.fill('input[placeholder="Password"]', 'wrongpassword');
     await page.click('button:has-text("Login")');
 
-    await page.waitForLoadState('load');
-
-    const pageContent = await page.textContent('body');
-    expect(pageContent).toBeTruthy();
+    await expect(page).toHaveURL(/\/auth\/login$/);
+    await expect(
+      page.locator('text=Invalid email or password. Please try again.'),
+    ).toBeVisible();
+    await expect(
+      page.locator('input[placeholder="Email"], input[placeholder="Email Address"]'),
+    ).toHaveValue('wrong@test.com');
+    await expect(page.locator('input[placeholder="Password"]')).toHaveValue(
+      'wrongpassword',
+    );
   });
 });
 
@@ -184,6 +191,78 @@ test.describe('Auth — Forgot Password', () => {
 });
 
 test.describe('Auth — Session & Redirect', () => {
+  test('successful login redirects to dashboard on the first attempt after a public-page visit', async ({
+    page,
+    studentUser,
+    mockLectureProgress,
+    mockQuizData,
+    mockStudentClassCode,
+    mockPhysicalFitnessTest,
+  }) => {
+    const session = createMockSession(studentUser);
+    const profile = createMockProfile(studentUser);
+
+    await mockLectureProgress();
+    await mockQuizData();
+    await mockStudentClassCode();
+    await mockPhysicalFitnessTest();
+
+    await page.route('**/storage/v1/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: '[]',
+      });
+    });
+
+    await page.route('**/auth/v1/token**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(session),
+      });
+    });
+
+    await page.route('**/auth/v1/user', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(session.user),
+      });
+    });
+
+    await page.route('**/rest/v1/profile**', async (route) => {
+      const accept = route.request().headers().accept ?? '';
+      const isSingle = accept.includes('vnd.pgrst.object');
+
+      await route.fulfill({
+        status: 200,
+        contentType: isSingle
+          ? 'application/vnd.pgrst.object+json'
+          : 'application/json',
+        body: isSingle
+          ? JSON.stringify(profile)
+          : JSON.stringify([profile]),
+      });
+    });
+
+    await page.goto(APP_ROUTES.home);
+    await page.waitForLoadState('load');
+
+    await page.goto(APP_ROUTES.auth.login);
+    await page.fill(
+      'input[placeholder="Email"], input[placeholder="Email Address"]',
+      studentUser.email,
+    );
+    await page.fill('input[placeholder="Password"]', 'password123');
+    await page.click('button:has-text("Login")');
+
+    await page.waitForURL('**/dashboard**', { timeout: 10000 });
+
+    expect(page.url()).toContain('dashboard');
+    expect(page.url()).not.toContain('login');
+  });
+
   test('unauthenticated user accessing dashboard is redirected to login', async ({
     page,
     mockUnauthenticated,

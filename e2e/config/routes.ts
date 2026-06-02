@@ -21,6 +21,11 @@ interface AppRoutes {
     parq: string;
     test: (index: number | string) => string;
     summary: (testType: string) => string;
+    teacherSummary: (
+      classCode: string,
+      testType: string,
+      studentId: string,
+    ) => string;
     preSummary: string;
     postSummary: string;
   };
@@ -64,6 +69,8 @@ export const APP_ROUTES: AppRoutes = {
     parq: '/physical-fitness-test/parq',
     test: (index) => `/physical-fitness-test/test/${index}`,
     summary: (testType) => `/physical-fitness-test/summary/${testType}`,
+    teacherSummary: (classCode, testType, studentId) =>
+      `/dashboard/view-class/${classCode}/physical-fitness-test/summary/${testType}/${studentId}`,
     preSummary: '/physical-fitness-test/summary/pre-test',
     postSummary: '/physical-fitness-test/summary/post-test',
   },
