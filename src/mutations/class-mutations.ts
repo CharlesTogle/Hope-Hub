@@ -12,16 +12,15 @@ export function isValidClassCode(code: string): boolean {
 export async function doesTeacherClassCodeExist(
   code: string,
 ): Promise<boolean> {
-  const { count, error } = await supabase
-    .from('teacher_class_code')
-    .select('*', { count: 'exact', head: true })
-    .eq('class_code', code);
+  const { data, error } = await supabase.rpc('class_code_exists', {
+    p_class_code: code,
+  });
 
   if (error) {
     throw new Error('Error checking class code. Please try again.');
   }
 
-  return (count ?? 0) > 0;
+  return data ?? false;
 }
 
 export async function joinStudentClass(
@@ -62,16 +61,15 @@ function generateClassCode(): string {
 }
 
 async function isClassCodeUnique(code: string): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('teacher_class_code')
-    .select('class_code')
-    .eq('class_code', code);
+  const { data, error } = await supabase.rpc('class_code_exists', {
+    p_class_code: code,
+  });
 
   if (error) {
     return false;
   }
 
-  return (data?.length ?? 0) === 0;
+  return !data;
 }
 
 async function generateUniqueClassCode(): Promise<string> {

@@ -106,6 +106,21 @@ export interface Database {
       };
     };
     Functions: {
+      class_code_exists: {
+        Args: { p_class_code: string };
+        Returns: boolean;
+      };
+      get_pft_summary_for_viewer: {
+        Args: {
+          p_student_uuid: string;
+          p_test_type: string;
+        };
+        Returns: {
+          full_name: string | null;
+          email: string | null;
+          pft_data: PFTSessionData | null;
+        }[];
+      };
       retrieve_students_by_class: {
         Args: { class_code_input: string };
         Returns: RawStudentData[];
