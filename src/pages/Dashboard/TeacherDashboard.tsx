@@ -75,7 +75,7 @@ export default function TeacherDashboard() {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/');
+    navigate('/', { replace: true });
   };
 
   if (!userID || isLoading) return <Loading />;

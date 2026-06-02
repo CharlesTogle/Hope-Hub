@@ -1,78 +1,87 @@
 import PageHeading from '@/components/PageHeading';
 import ErrorMessage from '@/components/utilities/ErrorMessage';
 import { Fragment } from 'react';
-import supabase from '@/client/supabase';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import Footer from '@/components/Footer';
 import Loading from '@/components/Loading';
 import { getBMI } from '@/services/Calculations';
 import { getBMICategory } from '@/utilities/bmi-category';
 import { useQuery } from '@tanstack/react-query';
-import { pftKeys, profileKeys } from '@/lib/query-keys';
+import { pftKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import type { PFTSessionData, PFTTestResult } from '@/types/physical-fitness';
+import {
+  fetchPftSummaryForViewer,
+  type PFTSummaryRouteType,
+} from '@/queries/pft-queries';
+import { fetchTeacherClassOwnership } from '@/queries/dashboard-queries';
 
 export function PhysicalFitnessTestSummary() {
-  const { testType } = useParams();
-  const [searchParams] = useSearchParams();
+  const { testType, classCode, studentId } = useParams();
   const { profile } = useAuthStore();
   const userId = profile?.uuid ?? null;
-  const studentId = searchParams.get('student');
-  const targetUserId = studentId || userId;
-  const isTeacherView = !!studentId;
+  const isTeacher = profile?.user_type === 'teacher';
+  const isTeacherView = Boolean(classCode && studentId);
+  const isValidTestType =
+    testType === 'pre-test' || testType === 'post-test';
+  const targetUserId = isTeacherView ? studentId ?? null : userId;
 
-  const columnName: 'pre_physical_fitness_test' | 'post_physical_fitness_test' =
-    testType === 'pre-test' ? 'pre_physical_fitness_test' : 'post_physical_fitness_test';
+  const { data: hasClassOwnership = false, isLoading: ownershipLoading } =
+    useQuery({
+      queryKey: ['class', 'ownership', userId ?? '', classCode ?? ''],
+      queryFn: () =>
+        fetchTeacherClassOwnership(userId ?? '', classCode ?? ''),
+      enabled: isTeacherView && isTeacher && !!userId && !!classCode,
+      retry: false,
+    });
 
-  const { data: studentInfo } = useQuery({
-    queryKey: [...profileKeys.detail(targetUserId ?? ''), 'info'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('profile')
-        .select('full_name, email')
-        .eq('uuid', targetUserId)
-        .single();
-      return data;
-    },
-    enabled: !!targetUserId,
-  });
+  const canLoadSummary =
+    isValidTestType &&
+    !!targetUserId &&
+    (!isTeacherView || (isTeacher && hasClassOwnership));
 
-  const { data: pftResult, isLoading, isError } = useQuery({
-    queryKey: [...pftKeys.session(targetUserId ?? ''), columnName],
-    queryFn: async (): Promise<PFTSessionData> => {
-      if (isTeacherView) {
-        const { data: exists } = await supabase
-          .from('profile')
-          .select('uuid')
-          .eq('uuid', targetUserId)
-          .single();
-        if (!exists) throw new Error('Student not found');
-      }
-
-      const { data, error } = await supabase
-        .from('physical_fitness_test')
-        .select(columnName)
-        .eq('uuid', targetUserId)
-        .single();
-      if (error) throw error;
-
-      const row = data as { pre_physical_fitness_test?: PFTSessionData | null; post_physical_fitness_test?: PFTSessionData | null } | null;
-      const pftData = row?.[columnName] ?? null;
-      const finishedTests = pftData?.finishedTestIndex;
-      if (!finishedTests) throw new Error('No test data');
-      const max = finishedTests.length - 1;
-      if (!finishedTests.includes(max)) throw new Error('Test not completed');
-
-      return pftData;
-    },
-    enabled: !!targetUserId,
+  const { data: summaryRow, isLoading, isError } = useQuery({
+    queryKey: pftKeys.summary(
+      isTeacherView ? classCode ?? '' : 'self',
+      targetUserId ?? '',
+      testType ?? '',
+    ),
+    queryFn: () =>
+      fetchPftSummaryForViewer(
+        targetUserId ?? '',
+        testType as PFTSummaryRouteType,
+      ),
+    enabled: canLoadSummary,
     retry: false,
   });
 
+  const studentInfo = summaryRow
+    ? {
+        full_name: summaryRow.full_name,
+        email: summaryRow.email,
+      }
+    : null;
+  const pftResult = summaryRow?.pft_data ?? null;
   const dataResults = pftResult ? getSummary(pftResult) : null;
+  const finishedTests = pftResult?.finishedTestIndex;
+  const isCompleted =
+    !!finishedTests && finishedTests.includes(finishedTests.length - 1);
 
-  if (isLoading || !userId) return <Loading />;
-  if (isError || !dataResults) return <ErrorMessage text="Error 400" subText="Bad Request" />;
+  if (!isValidTestType) {
+    return <ErrorMessage text="Error 400" subText="Bad Request" />;
+  }
+
+  if (isTeacherView && !isTeacher) {
+    return <ErrorMessage text="Error 403" subText="Forbidden" />;
+  }
+
+  if (isLoading || ownershipLoading || !userId) return <Loading />;
+  if (isTeacherView && !hasClassOwnership) {
+    return <ErrorMessage text="Error 404" subText="Class Not Found" />;
+  }
+  if (isError || !dataResults || !isCompleted) {
+    return <ErrorMessage text="Error 400" subText="Bad Request" />;
+  }
 
   return (
     <section id="physical-fitness-test-summary" className="parent-container">

@@ -5,7 +5,12 @@ import FormInput from '@/components/auth/FormInput';
 import InputContainer from '@/components/auth/InputContainer';
 import FormButton from '@/components/auth/FormButton';
 import { useEffect, useReducer, useRef } from 'react';
-import supabase from '@/client/supabase';
+import { AuthApiError } from '@supabase/supabase-js';
+import { useQueryClient } from '@tanstack/react-query';
+import supabase, { setRememberMePreference } from '@/client/supabase';
+import { authKeys } from '@/lib/query-keys';
+import { fetchAuthenticatedProfile } from '@/queries/auth-queries';
+import { useAuthStore } from '@/store/auth-store';
 import { useNavigate } from 'react-router-dom';
 import useRateLimiter from '@/hooks/useRateLimiter';
 
@@ -33,7 +38,7 @@ const initialState: LoginState = {
   password: '',
   errorMessage: '',
   successMessage: '',
-  rememberMe: false,
+  rememberMe: localStorage.getItem('rememberMe') === 'true',
   isSubmitting: false,
   isDebounced: false,
 };
@@ -59,9 +64,27 @@ function reducer(state: LoginState, action: LoginAction): LoginState {
   }
 }
 
+function getLoginErrorMessage(error: unknown): string {
+  if (error instanceof AuthApiError) {
+    if (error.message === 'Invalid login credentials') {
+      return 'Invalid email or password. Please try again.';
+    }
+
+    return error.message;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return 'An unexpected error occurred. Please try again.';
+}
+
 export default function Login() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const setAuthState = useAuthStore((store) => store.setAuthState);
 
   const isRateLimited = useRateLimiter({ minIntervalMs: 5000, maxAttempts: 7 });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -114,6 +137,8 @@ export default function Login() {
     );
 
     try {
+      setRememberMePreference(state.rememberMe);
+
       const { error } = await supabase.auth.signInWithPassword({
         email: state.email,
         password: state.password,
@@ -123,17 +148,38 @@ export default function Login() {
         console.error('Login failed', { error });
         dispatch({
           type: 'set-error',
-          value: 'Invalid email or password. Please try again.',
+          value: getLoginErrorMessage(error),
         });
-      } else {
-        localStorage.setItem('rememberMe', state.rememberMe.toString());
-        dispatch({ type: 'set-success', value: 'Login Success' });
-        navigate('/dashboard');
+        return;
       }
-    } catch {
+
+      const authSession = await fetchAuthenticatedProfile();
+
+      if (!authSession.userId || !authSession.profile) {
+        console.error('Login succeeded but profile could not be loaded', {
+          email: state.email,
+        });
+        await supabase.auth.signOut();
+        queryClient.setQueryData(authKeys.current(), {
+          userId: null,
+          profile: null,
+        });
+        dispatch({
+          type: 'set-error',
+          value: 'Login succeeded, but your account could not be loaded. Please try again.',
+        });
+        return;
+      }
+
+      queryClient.setQueryData(authKeys.current(), authSession);
+      setAuthState(authSession);
+      dispatch({ type: 'set-success', value: 'Login Success' });
+      navigate('/dashboard', { replace: true });
+    } catch (error) {
+      console.error('Unexpected login error', { error });
       dispatch({
         type: 'set-error',
-        value: 'An unexpected error occurred. Please try again.',
+        value: getLoginErrorMessage(error),
       });
     } finally {
       dispatch({ type: 'set-submitting', value: false });

@@ -121,7 +121,7 @@ export default function StudentDashboard() {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/auth/login');
+    navigate('/auth/login', { replace: true });
   };
 
   const isLoading = lectureLoading || quizStatsLoading || quizDataLoading;

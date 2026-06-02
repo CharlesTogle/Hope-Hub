@@ -11,9 +11,10 @@ import type { CleanedStudent } from '@/types/student';
 interface TableProps {
   headings: string[];
   content: CleanedStudent[];
+  classCode: string;
 }
 
-export default function Table({ headings, content }: TableProps) {
+export default function Table({ headings, content, classCode }: TableProps) {
   const navigate = useNavigate();
   const [exportingStudent, setExportingStudent] = useState<string | null>(null);
   const handleViewTestRecord = (student: CleanedStudent, testType: string) => {
@@ -23,7 +24,7 @@ export default function Table({ headings, content }: TableProps) {
     const summaryType =
       testType === 'Pre Test Record' ? 'pre-test' : 'post-test';
     navigate(
-      `/physical-fitness-test/summary/${summaryType}?student=${student.uuid}`,
+      `/dashboard/view-class/${classCode}/physical-fitness-test/summary/${summaryType}/${student.uuid}`,
     );
   };
 

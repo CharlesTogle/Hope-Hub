@@ -3,11 +3,11 @@ import { memo, useCallback, useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BrowserRouter,
+  Navigate,
   Outlet,
   Route,
   Routes,
   useLocation,
-  useNavigate,
 } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import About from './pages/About';
@@ -77,27 +77,38 @@ const HamburgerMenuComponent = memo(function HamburgerMenuComponent({
 function ProtectedRoute() {
   const profile = useAuthStore((state) => state.profile);
   const isLoading = useAuthStore((state) => state.isLoading);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!isLoading && !profile) {
-      navigate('/auth/login');
-    }
-  }, [isLoading, navigate, profile]);
 
   if (isLoading) {
     return <Loading />;
   }
 
   if (!profile) {
-    return null;
+    return <Navigate to="/auth/login" replace />;
+  }
+
+  return <Outlet />;
+}
+
+function TeacherRoute() {
+  const profile = useAuthStore((state) => state.profile);
+  const isLoading = useAuthStore((state) => state.isLoading);
+
+  if (isLoading) {
+    return <Loading />;
+  }
+
+  if (!profile) {
+    return <Navigate to="/auth/login" replace />;
+  }
+
+  if (profile.user_type !== 'teacher') {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <Outlet />;
 }
 
 function SidebarLayout() {
-  const setAuthState = useAuthStore((state) => state.setAuthState);
   const sidebarOpen = useUIStore((state) => state.sidebarOpen);
   const setSidebarOpen = useUIStore((state) => state.setSidebarOpen);
   const showMenu = useUIStore((state) => state.showMenu);
@@ -106,30 +117,6 @@ function SidebarLayout() {
   const setLastScrollY = useUIStore((state) => state.setLastScrollY);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const location = useLocation();
-  const queryClient = useQueryClient();
-
-  const { data: authSession } = useQuery({
-    queryKey: authKeys.current(),
-    queryFn: fetchAuthenticatedProfile,
-  });
-
-  useEffect(() => {
-    if (!authSession) {
-      return;
-    }
-
-    setAuthState(authSession);
-  }, [authSession, setAuthState]);
-
-  useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      void queryClient.invalidateQueries({ queryKey: authKeys.all });
-    });
-
-    return () => subscription.unsubscribe();
-  }, [queryClient]);
 
   const handleHamburgerClick = useCallback(() => {
     setSidebarOpen(!sidebarOpen);
@@ -194,6 +181,36 @@ function SidebarLayout() {
   );
 }
 
+function AuthSessionBridge() {
+  const setAuthState = useAuthStore((state) => state.setAuthState);
+  const queryClient = useQueryClient();
+
+  const { data: authSession } = useQuery({
+    queryKey: authKeys.current(),
+    queryFn: fetchAuthenticatedProfile,
+  });
+
+  useEffect(() => {
+    if (!authSession) {
+      return;
+    }
+
+    setAuthState(authSession);
+  }, [authSession, setAuthState]);
+
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      void queryClient.invalidateQueries({ queryKey: authKeys.all });
+    });
+
+    return () => subscription.unsubscribe();
+  }, [queryClient]);
+
+  return null;
+}
+
 function PhysicalFitnessWrapper() {
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -230,6 +247,7 @@ function ProfileWrapper() {
 function App() {
   return (
     <BrowserRouter>
+      <AuthSessionBridge />
       <Toaster position="top-right" closeButton />
       <Routes>
         <Route element={<SidebarLayout />} path="/">
@@ -278,10 +296,16 @@ function App() {
               <Route path="quiz/:quizId" element={<Quiz />} />
             </Route>
             <Route path="dashboard" element={<ProfileWrapper />} />
-            <Route
-              path="dashboard/view-class/:classCode"
-              element={<ViewClass />}
-            />
+            <Route element={<TeacherRoute />}>
+              <Route
+                path="dashboard/view-class/:classCode"
+                element={<ViewClass />}
+              />
+              <Route
+                path="dashboard/view-class/:classCode/physical-fitness-test/summary/:testType/:studentId"
+                element={<PhysicalFitnessTestSummary />}
+              />
+            </Route>
           </Route>
           <Route path="workout-zone/:videoUrl" element={<WorkoutZone />} />
           <Route path="workout-zone/" element={<WorkoutZone />} />

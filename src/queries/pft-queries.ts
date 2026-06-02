@@ -12,6 +12,19 @@ export interface PFTStatus {
   testType: PFTColumnName;
 }
 
+export type PFTSummaryRouteType = 'pre-test' | 'post-test';
+
+export interface PFTSummaryRow {
+  full_name: string | null;
+  email: string | null;
+  pft_data: PFTSessionData | null;
+}
+
+interface PFTProfileRow {
+  full_name: string | null;
+  email: string | null;
+}
+
 export async function fetchPftRecord(
   userId: string,
 ): Promise<PFTRecordRow | null> {
@@ -30,4 +43,49 @@ export async function fetchPftRecord(
 
 export async function fetchPftStatus(userId: string): Promise<PFTStatus> {
   return derivePftStatus(await fetchPftRecord(userId));
+}
+
+export async function fetchPftSummaryForViewer(
+  studentId: string,
+  testType: PFTSummaryRouteType,
+): Promise<PFTSummaryRow | null> {
+  const { data, error } = await supabase.rpc('get_pft_summary_for_viewer', {
+    p_student_uuid: studentId,
+    p_test_type: testType,
+  });
+
+  if (!error && data?.[0]) {
+    return data[0];
+  }
+
+  const [{ data: profile, error: profileError }, { data: pftRecord, error: pftError }] =
+    await Promise.all([
+      supabase
+        .from('profile')
+        .select('full_name, email')
+        .eq('uuid', studentId)
+        .single<PFTProfileRow>(),
+      supabase
+        .from('physical_fitness_test')
+        .select('pre_physical_fitness_test, post_physical_fitness_test')
+        .eq('uuid', studentId)
+        .single<PFTRecordRow>(),
+    ]);
+
+  if (profileError) {
+    throw profileError;
+  }
+
+  if (pftError) {
+    throw pftError;
+  }
+
+  return {
+    full_name: profile.full_name,
+    email: profile.email,
+    pft_data:
+      testType === 'pre-test'
+        ? pftRecord.pre_physical_fitness_test
+        : pftRecord.post_physical_fitness_test,
+  };
 }

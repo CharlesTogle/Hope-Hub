@@ -19,6 +19,12 @@ const initialState = {
   isLoading: true,
 };
 
+const loggedOutState = {
+  userId: null as string | null,
+  profile: null as Profile | null,
+  isLoading: false,
+};
+
 export const useAuthStore = create<AuthState>((set) => ({
   ...initialState,
 
@@ -31,12 +37,12 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   setIsLoading: (isLoading) => set({ isLoading }),
 
-  clearAuthState: () => set(initialState),
+  clearAuthState: () => set(loggedOutState),
 
   logout: async () => {
     await supabase.auth.signOut();
     localStorage.removeItem('lectureProgress');
     localStorage.removeItem('physicalFitnessData');
-    set(initialState);
+    set(loggedOutState);
   },
 }));

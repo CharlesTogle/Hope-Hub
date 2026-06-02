@@ -164,7 +164,11 @@ export default function ViewClass () {
         />{' '}
         <div className='w-full mt-10'>
           <div className='overflow-x-auto'>
-            <Table headings={headings} content={activeStudentData} />
+            <Table
+              headings={headings}
+              content={activeStudentData}
+              classCode={classCode ?? ''}
+            />
           </div>
         </div>
       </div>
