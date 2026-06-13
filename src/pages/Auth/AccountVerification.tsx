@@ -168,26 +168,6 @@ async function verifyAccount(
     };
   }
 
-  const { fullName, userType, classCode, lectureProgress } = user.user_metadata;
-  const { error: rpcError } = await supabase.rpc('register_user', {
-    p_user_id: user.id,
-    p_full_name: fullName,
-    p_email: user.email,
-    p_user_type: userType,
-    p_class_code: classCode ?? null,
-    p_lecture_progress: lectureProgress,
-  });
-
-  if (rpcError) {
-    console.error('AccountVerification register_user RPC failed', { rpcError });
-    await supabase.auth.signOut();
-    return {
-      status: 'verified',
-      errorMessage: 'Registration failed. Please try registering again.',
-      shouldShowRegister: true,
-    };
-  }
-
   return {
     status: 'verified',
     errorMessage: '',
