@@ -76,11 +76,15 @@ GRANT EXECUTE ON FUNCTION public.class_code_exists(text) TO authenticated;
 DROP POLICY IF EXISTS "Enable read access for all users" ON public.profile;
 DROP POLICY IF EXISTS "Enable update for users based on email" ON public.profile;
 
+DROP POLICY IF EXISTS "Users can view their own profile or students they teach" ON public.profile;
+
 CREATE POLICY "Users can view their own profile or students they teach"
 ON public.profile
 FOR SELECT
 TO authenticated
 USING (public.current_user_can_view_student(uuid));
+
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profile;
 
 CREATE POLICY "Users can update their own profile"
 ON public.profile
@@ -92,6 +96,7 @@ WITH CHECK (auth.uid() = uuid);
 DROP POLICY IF EXISTS "Enable read access for all users" ON public.lecture_progress;
 DROP POLICY IF EXISTS "Allow users to update their own data" ON public.lecture_progress;
 DROP POLICY IF EXISTS "Enable update for users based on email" ON public.lecture_progress;
+DROP POLICY IF EXISTS "Users can insert their own lecture progress" ON public.lecture_progress;
 
 CREATE POLICY "Users can insert their own lecture progress"
 ON public.lecture_progress
@@ -99,11 +104,15 @@ FOR INSERT
 TO authenticated
 WITH CHECK (auth.uid() = uuid);
 
+DROP POLICY IF EXISTS "Users can view their own lecture progress or students they teach" ON public.lecture_progress;
+
 CREATE POLICY "Users can view their own lecture progress or students they teach"
 ON public.lecture_progress
 FOR SELECT
 TO authenticated
 USING (public.current_user_can_view_student(uuid));
+
+DROP POLICY IF EXISTS "Users can update their own lecture progress" ON public.lecture_progress;
 
 CREATE POLICY "Users can update their own lecture progress"
 ON public.lecture_progress
@@ -116,17 +125,23 @@ DROP POLICY IF EXISTS "Enable insert for authenticated users only" ON public.phy
 DROP POLICY IF EXISTS "Enable read access for all users" ON public.physical_fitness_test;
 DROP POLICY IF EXISTS "Enable update for users based on uuid" ON public.physical_fitness_test;
 
+DROP POLICY IF EXISTS "Users can insert their own PFT data" ON public.physical_fitness_test;
+
 CREATE POLICY "Users can insert their own PFT data"
 ON public.physical_fitness_test
 FOR INSERT
 TO authenticated
 WITH CHECK (auth.uid() = uuid);
 
+DROP POLICY IF EXISTS "Users can view their own PFT data or students they teach" ON public.physical_fitness_test;
+
 CREATE POLICY "Users can view their own PFT data or students they teach"
 ON public.physical_fitness_test
 FOR SELECT
 TO authenticated
 USING (public.current_user_can_view_student(uuid));
+
+DROP POLICY IF EXISTS "Users can update their own PFT data" ON public.physical_fitness_test;
 
 CREATE POLICY "Users can update their own PFT data"
 ON public.physical_fitness_test
@@ -137,6 +152,8 @@ WITH CHECK (auth.uid() = uuid);
 
 DROP POLICY IF EXISTS "Enable read access for all users" ON public.quiz;
 DROP POLICY IF EXISTS "Policy with table joins" ON public.quiz;
+
+DROP POLICY IF EXISTS "Authenticated users can view quizzes" ON public.quiz;
 
 CREATE POLICY "Authenticated users can view quizzes"
 ON public.quiz
@@ -149,6 +166,8 @@ DROP POLICY IF EXISTS "Enable read access for all users" ON public.quiz_progress
 DROP POLICY IF EXISTS "Enable update for users based on email" ON public.quiz_progress;
 DROP POLICY IF EXISTS "Policy with table joins" ON public.quiz_progress;
 
+DROP POLICY IF EXISTS "Students can insert their own quiz progress" ON public.quiz_progress;
+
 CREATE POLICY "Students can insert their own quiz progress"
 ON public.quiz_progress
 FOR INSERT
@@ -158,11 +177,15 @@ WITH CHECK (
   AND NOT public.current_user_is_teacher()
 );
 
+DROP POLICY IF EXISTS "Users can view their own quiz progress or students they teach" ON public.quiz_progress;
+
 CREATE POLICY "Users can view their own quiz progress or students they teach"
 ON public.quiz_progress
 FOR SELECT
 TO authenticated
 USING (public.current_user_can_view_student(user_id));
+
+DROP POLICY IF EXISTS "Students can update their own quiz progress" ON public.quiz_progress;
 
 CREATE POLICY "Students can update their own quiz progress"
 ON public.quiz_progress
@@ -182,11 +205,15 @@ DROP POLICY IF EXISTS "Enable insert for authenticated users only" ON public.stu
 DROP POLICY IF EXISTS "Enable read access for all users" ON public.student_class_code;
 DROP POLICY IF EXISTS "Enable update for users based on uuid" ON public.student_class_code;
 
+DROP POLICY IF EXISTS "Users can delete their own student class membership" ON public.student_class_code;
+
 CREATE POLICY "Users can delete their own student class membership"
 ON public.student_class_code
 FOR DELETE
 TO authenticated
 USING (auth.uid() = uuid);
+
+DROP POLICY IF EXISTS "Users can insert their own student class membership" ON public.student_class_code;
 
 CREATE POLICY "Users can insert their own student class membership"
 ON public.student_class_code
@@ -194,11 +221,15 @@ FOR INSERT
 TO authenticated
 WITH CHECK (auth.uid() = uuid);
 
+DROP POLICY IF EXISTS "Users can view their own student class membership or students they teach" ON public.student_class_code;
+
 CREATE POLICY "Users can view their own student class membership or students they teach"
 ON public.student_class_code
 FOR SELECT
 TO authenticated
 USING (public.current_user_can_view_student(uuid));
+
+DROP POLICY IF EXISTS "Users can update their own student class membership" ON public.student_class_code;
 
 CREATE POLICY "Users can update their own student class membership"
 ON public.student_class_code
@@ -212,6 +243,8 @@ DROP POLICY IF EXISTS "Enable insert for authenticated users only" ON public.tea
 DROP POLICY IF EXISTS "Enable read access for all users" ON public.teacher_class_code;
 DROP POLICY IF EXISTS "Enable update for users based on email" ON public.teacher_class_code;
 
+DROP POLICY IF EXISTS "Teachers can delete their own class codes" ON public.teacher_class_code;
+
 CREATE POLICY "Teachers can delete their own class codes"
 ON public.teacher_class_code
 FOR DELETE
@@ -220,6 +253,8 @@ USING (
   public.current_user_is_teacher()
   AND auth.uid() = uuid
 );
+
+DROP POLICY IF EXISTS "Teachers can insert their own class codes" ON public.teacher_class_code;
 
 CREATE POLICY "Teachers can insert their own class codes"
 ON public.teacher_class_code
@@ -230,6 +265,8 @@ WITH CHECK (
   AND auth.uid() = uuid
 );
 
+DROP POLICY IF EXISTS "Teachers can view their own class codes" ON public.teacher_class_code;
+
 CREATE POLICY "Teachers can view their own class codes"
 ON public.teacher_class_code
 FOR SELECT
@@ -238,6 +275,8 @@ USING (
   public.current_user_is_teacher()
   AND auth.uid() = uuid
 );
+
+DROP POLICY IF EXISTS "Teachers can update their own class codes" ON public.teacher_class_code;
 
 CREATE POLICY "Teachers can update their own class codes"
 ON public.teacher_class_code

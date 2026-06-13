@@ -86,7 +86,7 @@ export default function ForgotPassword() {
 
     dispatch({ type: 'set-loading', value: true });
     const { error } = await supabase.auth.resetPasswordForEmail(state.email, {
-      redirectTo: 'https://hope-hub-dcvm.vercel.app/auth/change-password',
+      redirectTo: `${import.meta.env.VITE_APP_URL as string}/auth/change-password`,
     });
     dispatch({ type: 'set-loading', value: false });
 

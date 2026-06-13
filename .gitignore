@@ -29,3 +29,5 @@ audit-2.md
 CLAUDE.md
 .claude/*
 .codex
+.vercel
+.env*
