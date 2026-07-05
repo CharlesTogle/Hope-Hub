@@ -3,8 +3,9 @@ import FormContainer from '@/components/auth/FormContainer';
 import FormHeading from '@/components/auth/FormHeading';
 import FormButton from '@/components/auth/FormButton';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import ErrorMessage from '@/components/utilities/ErrorMessage';
 import supabase from '@/client/supabase';
 import Loading from '@/components/Loading';
@@ -28,6 +29,7 @@ type VerificationResult =
       status: 'expired';
       errorMessage: string;
       shouldShowLogin: boolean;
+      email: string;
     }
   | {
       status: 'bad-request';
@@ -98,6 +100,7 @@ async function verifyAccount(
             errorMessage:
               'Email verification link has expired. Your account still exists. Please try logging in instead.',
             shouldShowLogin: true,
+            email: user.email ?? '',
           };
         }
 
@@ -108,6 +111,13 @@ async function verifyAccount(
             userId: user.id,
             error,
           });
+          return {
+            status: 'expired',
+            errorMessage:
+              'Email verification link has expired. Your account may need manual cleanup. Please contact support.',
+            shouldShowLogin: false,
+            email: user.email ?? '',
+          };
         }
       }
     } catch (error) {
@@ -121,6 +131,7 @@ async function verifyAccount(
       errorMessage:
         'Email verification link has expired. Please register again.',
       shouldShowLogin: false,
+      email: '',
     };
   }
 
@@ -175,6 +186,66 @@ async function verifyAccount(
   };
 }
 
+function ExpiredVerification({ result }: { result: VerificationResult & { status: 'expired' } }) {
+  const navigate = useNavigate();
+  const [isResending, setIsResending] = useState(false);
+  const [resent, setResent] = useState(false);
+
+  const handleResend = async () => {
+    if (!result.email) return;
+    setIsResending(true);
+    const { error } = await supabase.auth.resend({
+      email: result.email,
+      type: 'signup',
+      options: {
+        emailRedirectTo: `${import.meta.env.VITE_APP_URL as string}/auth/account-verification`,
+      },
+    });
+    setIsResending(false);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      setResent(true);
+      toast.success('Verification email sent. Please check your inbox.');
+    }
+  };
+
+  return (
+    <AuthContainer>
+      <FormContainer>
+        <FormHeading
+          heading='Verification Link Expired'
+          callToAction='Your email verification link has expired'
+        />
+        <div className='text-center'>
+          <p className='text-red font-content font-semibold'>
+            {result.errorMessage}
+          </p>
+        </div>
+        {result.email && !resent && (
+          <FormButton
+            text={isResending ? 'Sending...' : 'Resend Verification Email'}
+            onClick={handleResend}
+            disabled={isResending}
+          />
+        )}
+        {resent && (
+          <p className='text-green font-content font-semibold text-center mt-2'>
+            Verification email sent! Please check your inbox.
+          </p>
+        )}
+        <FormButton
+          text={result.shouldShowLogin ? 'Go to Login' : 'Register Again'}
+          onClick={() =>
+            navigate(result.shouldShowLogin ? '/auth/login' : '/auth/register')
+          }
+          disabled={false}
+        />
+      </FormContainer>
+    </AuthContainer>
+  );
+}
+
 export default function AccountVerification() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -195,28 +266,7 @@ export default function AccountVerification() {
   }
 
   if (result.status === 'expired') {
-    return (
-      <AuthContainer>
-        <FormContainer>
-          <FormHeading
-            heading='Verification Link Expired'
-            callToAction='Your email verification link has expired'
-          />
-          <div className='text-center'>
-            <p className='text-red font-content font-semibold'>
-              {result.errorMessage}
-            </p>
-          </div>
-          <FormButton
-            text={result.shouldShowLogin ? 'Go to Login' : 'Register Again'}
-            onClick={() =>
-              navigate(result.shouldShowLogin ? '/auth/login' : '/auth/register')
-            }
-            disabled={false}
-          />
-        </FormContainer>
-      </AuthContainer>
-    );
+    return <ExpiredVerification result={result} />;
   }
 
   return (

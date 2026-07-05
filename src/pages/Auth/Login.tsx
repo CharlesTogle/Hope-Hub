@@ -70,7 +70,11 @@ function getLoginErrorMessage(error: unknown): string {
       return 'Invalid email or password. Please try again.';
     }
 
-    return error.message;
+    if (error.message === 'Email not confirmed') {
+      return 'Please verify your email before logging in.';
+    }
+
+    return 'Authentication failed. Please try again.';
   }
 
   if (error instanceof Error && error.message) {

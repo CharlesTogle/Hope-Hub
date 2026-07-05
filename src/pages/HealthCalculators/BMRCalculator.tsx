@@ -1,4 +1,5 @@
 import { useCallback, useReducer, useRef } from 'react';
+import { toast } from 'sonner';
 import { getBMR, getCalorieGoals } from '@/services/Calculations';
 import { highlightedData } from '@/utilities/CalculatorData';
 import Container from '@/components/health-calculators/Container';
@@ -181,12 +182,12 @@ export default function BMRCalculator() {
       Number(state.height) <= 0 ||
       Number(state.weight) <= 0
     ) {
-      alert('Please enter valid height and weight values');
+      toast.error('Please enter valid height and weight values');
       return;
     }
 
     if (!state.gender) {
-      alert('Please select a gender');
+      toast.error('Please select a gender');
       return;
     }
 
@@ -203,7 +204,7 @@ export default function BMRCalculator() {
         state.weightUnit,
       );
     } catch (error) {
-      alert(error);
+      toast.error(error instanceof Error ? error.message : 'Calculation failed');
       return;
     }
 
@@ -213,7 +214,7 @@ export default function BMRCalculator() {
     try {
       calorieGoals = getCalorieGoals(BMR, state.activityLevel);
     } catch (error) {
-      alert(error);
+      toast.error(error instanceof Error ? error.message : 'Calculation failed');
       return;
     }
 

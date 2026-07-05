@@ -1,4 +1,5 @@
 import { useReducer, useRef } from 'react';
+import { toast } from 'sonner';
 import { getBMI } from '@/services/Calculations';
 import { highlightedData } from '@/utilities/CalculatorData';
 import Container from '@/components/health-calculators/Container';
@@ -120,7 +121,7 @@ export default function BMICalculator() {
       Number(state.height) <= 0 ||
       Number(state.weight) <= 0
     ) {
-      alert('Please enter valid height and weight values');
+      toast.error('Please enter valid height and weight values');
       return;
     }
 

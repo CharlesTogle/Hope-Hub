@@ -3,6 +3,7 @@ import Timer from '@/components/quiz/Timer';
 import Loading from '@/components/Loading';
 import QuizBody from '@/components/quiz/quiz-body';
 import QuizResults from '@/components/quiz/quiz-results';
+import { toast } from 'sonner';
 import { calculatePoints } from '@/utilities/utils';
 import { submitAnswer, markQuizAsDone } from '@/mutations/quiz-mutations';
 import { fetchLeaderboard } from '@/queries/quiz-queries';
@@ -137,6 +138,8 @@ export default function QuizGame({
 
       if (!error) {
         setQuizState(nextQuizState);
+      } else {
+        toast.error('Failed to save answer. Please try again.');
       }
 
       setIsLoading(false);

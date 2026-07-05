@@ -2,6 +2,7 @@ import Banner from '@/components/dashboard/Banner';
 import Statistics from '@/components/dashboard/Statistics';
 import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import JoinClass from '@/components/dashboard/JoinClass';
 import ProfileSidebar from '@/components/dashboard/ProfileSidebar';
 import { useProfilePicture } from '@/hooks/use-profile-picture';
@@ -97,7 +98,10 @@ export default function StudentDashboard() {
       setTempClassCode('');
       setIsJoiningClass(false);
     },
-    onError: () => alert('Invalid class code or error joining class.'),
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : 'Failed to join class.';
+      toast.error(message);
+    },
   });
 
   const leaveMutation = useMutation({
@@ -106,6 +110,7 @@ export default function StudentDashboard() {
       setConfirmingLeave(false);
       queryClient.invalidateQueries({ queryKey: classKeys.studentCode(userID ?? '') });
     },
+    onError: () => toast.error('Failed to leave class. Please try again.'),
   });
 
   const handleLeaveClass = () => {

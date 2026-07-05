@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { Download } from 'lucide-react';
 import {
   generateStudentExcel,
@@ -51,7 +52,7 @@ export default function Table({ headings, content, classCode }: TableProps) {
       downloadExcel(excelData, filename);
     } catch (error) {
       console.error('Error exporting student Excel:', error);
-      alert('Failed to export student data. Please try again.');
+      toast.error('Failed to export student data. Please try again.');
     } finally {
       setExportingStudent(null);
     }

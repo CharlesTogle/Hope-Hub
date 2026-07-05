@@ -40,7 +40,11 @@ export const useAuthStore = create<AuthState>((set) => ({
   clearAuthState: () => set(loggedOutState),
 
   logout: async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Logout failed', { error });
+    }
     localStorage.removeItem('lectureProgress');
     localStorage.removeItem('physicalFitnessData');
     set(loggedOutState);

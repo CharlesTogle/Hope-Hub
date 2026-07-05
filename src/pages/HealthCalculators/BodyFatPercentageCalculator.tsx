@@ -1,4 +1,5 @@
 import { useReducer, useRef } from 'react';
+import { toast } from 'sonner';
 import { getBodyFatPercentage } from '@/services/Calculations';
 import { highlightedData } from '@/utilities/CalculatorData';
 import Container from '@/components/health-calculators/Container';
@@ -134,7 +135,7 @@ export default function BodyFatPercentageCalculator() {
         if (bodyFatPercentage >= 4) return 'Essential';
         return 'Below';
       default:
-        alert('Gender must be "male" or "female".');
+        toast.error('Gender must be "male" or "female".');
         return 'Below';
     }
   };
@@ -151,12 +152,12 @@ export default function BodyFatPercentageCalculator() {
 
   const handleCalculate = () => {
     if (!state.weight || Number(state.weight) <= 0) {
-      alert('Please enter a valid weight value.');
+      toast.error('Please enter a valid weight value.');
       return;
     }
 
     if (!state.gender) {
-      alert('Please select a gender.');
+      toast.error('Please select a gender.');
       return;
     }
 

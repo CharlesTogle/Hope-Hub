@@ -5,6 +5,7 @@ import CalculatorContainer from '@/components/health-calculators/CalculatorConta
 import { CalculatorDetails } from '@/components/health-calculators/CalculatorDetails';
 import GenderSelector from '@/components/health-calculators/GenderSelector';
 import { useState, useRef } from 'react';
+import { toast } from 'sonner';
 import CalculatorInput from '@/components/health-calculators/CalculatorInput';
 import Content from '@/components/health-calculators/Content';
 import RowContainer from '@/components/health-calculators/RowContainer';
@@ -33,7 +34,7 @@ export default function IBWCalculator () {
 
   const handleCalculate = () => {
     if (!height || Number(height) <= 0) {
-      alert('Please enter valid height values');
+      toast.error('Please enter valid height values');
       return;
     }
 
@@ -54,8 +55,7 @@ export default function IBWCalculator () {
         }, 100);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Calculation failed';
-      alert(message);
+      toast.error(error instanceof Error ? error.message : 'Calculation failed');
     }
   };
 

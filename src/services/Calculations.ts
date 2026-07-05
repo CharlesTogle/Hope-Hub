@@ -49,7 +49,7 @@ export function getBMR(
   weightUnit: WeightUnit = 'kg',
 ): BMRResult {
   if (!gender) {
-    throw new Error('Gender is unknown');
+    throw new Error('Please select a gender to continue.');
   }
 
   // Convert height to cm if needed
@@ -93,14 +93,14 @@ export function getBMR(
     case 'Katch-McArdle':
       if (bodyFat == null) {
         throw new Error(
-          'Body fat percentage is required for Katch-McArdle formula',
+          'Body fat percentage is required for the selected formula.',
         );
       }
       bmr = 370 + 21.6 * (1 - bodyFat / 100) * weightInKg;
       break;
 
     default:
-      throw new Error(`Unknown formula variant: ${formulaVariant}`);
+      throw new Error('Unknown formula variant selected. Please choose a valid formula.');
   }
 
   const caloriesByActivity: BMRResult['DailyCalories'] = {
@@ -169,7 +169,7 @@ export function getCalorieGoals(
       multiplier = activityMultipliers['extra active'];
       break;
     default:
-      throw new Error(`Unknown activity level: ${activityLevel}`);
+      throw new Error('Unknown activity level selected. Please choose a valid activity level.');
   }
 
   const tdee = bmr * multiplier;
@@ -198,7 +198,7 @@ export function getTDEE(
   weightUnit: WeightUnit = 'kg',
 ): TDEEResult {
   if (!gender) {
-    throw new Error('Gender is unknown');
+    throw new Error('Please select a gender to continue.');
   }
 
   // Convert height to cm if needed
@@ -269,7 +269,7 @@ export function getTDEE(
       break;
 
     default:
-      throw new Error(`Unknown activity type: ${activityType}`);
+      throw new Error('Unknown activity type selected. Please choose a valid activity level.');
   }
 
   const caloriesByActivity: Record<string, number> = {};
@@ -369,7 +369,7 @@ export function getWaterIntake(
       waterIntake += 0.7;
       break;
     default:
-      throw new Error(`Unknown formula variant.`);
+      throw new Error('Unknown activity level. Please select a valid option.');
   }
 
   return parseFloat(waterIntake.toFixed(2));
@@ -484,7 +484,7 @@ export function getBodyFatPercentage(
       break;
     case 'female':
       if (hipsInInches === undefined) {
-        throw new Error('Hips measurement is required for female body fat calculation.');
+        throw new Error('Hips measurement is required for female body fat calculation. Please enter your hip measurement.');
       }
       usMethod =
         163.205 * Math.log10(waistInInches + hipsInInches - neckInInches) -
@@ -505,7 +505,7 @@ export function getBodyFatPercentage(
 
       break;
     default:
-      throw new Error("Gender must be 'male' or 'female'.");
+      throw new Error('Gender must be male or female for this calculation.');
   }
 
   return {

@@ -37,7 +37,9 @@ export default function Timer({ duration, color, onTimerEnd }: TimerProps) {
         setRemainingTime(remainingTime);
       }
       if (quizId) {
-        void updateRemainingTime(quizId, remainingTime);
+        updateRemainingTime(quizId, remainingTime).then((error) => {
+          if (error) console.error('Failed to sync timer', { quizId, remainingTime, error });
+        });
       }
     }, 1000);
 

@@ -4,6 +4,7 @@ import Container from '@/components/health-calculators/Container';
 import CalculatorContainer from '@/components/health-calculators/CalculatorContainer';
 import { CalculatorDetails } from '@/components/health-calculators/CalculatorDetails';
 import { useState, useRef } from 'react';
+import { toast } from 'sonner';
 import CalculatorInput from '@/components/health-calculators/CalculatorInput';
 import Content from '@/components/health-calculators/Content';
 import RowContainer from '@/components/health-calculators/RowContainer';
@@ -72,7 +73,7 @@ export default function WaterIntakeCalculator () {
 
   const handleCalculate = () => {
     if (!weight || Number(weight) <= 0) {
-      alert('Please enter a valid weight value.');
+      toast.error('Please enter a valid weight value.');
       return;
     }
 

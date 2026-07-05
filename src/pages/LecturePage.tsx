@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import PageHeading from '@/components/PageHeading';
 import LecturePDF from '@/components/lectures/LecturePDF';
 import ErrorMessage from '@/components/utilities/ErrorMessage';
+import { toast } from 'sonner';
 import supabase from '@/client/supabase';
 import LectureProgress from '@/utilities/LectureProgress';
 import Loading from '@/components/Loading';
@@ -59,6 +60,7 @@ export default function LecturePage() {
     onSuccess: (updated) => {
       queryClient.setQueryData(lectureKeys.progress(userId ?? ''), updated);
     },
+    onError: () => toast.error('Failed to save lecture progress. Please try again.'),
   });
 
   const currentLectureProgress = lectureProgress.find(
@@ -124,6 +126,7 @@ export default function LecturePage() {
     onSuccess: (updated) => {
       queryClient.setQueryData(lectureKeys.progress(userId ?? ''), updated);
     },
+    onError: () => toast.error('Failed to finish lecture. Please try again.'),
   });
 
   const handleLectureFinish = () => {

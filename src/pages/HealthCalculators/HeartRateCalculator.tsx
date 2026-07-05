@@ -4,6 +4,7 @@ import Container from '@/components/health-calculators/Container';
 import CalculatorContainer from '@/components/health-calculators/CalculatorContainer';
 import { CalculatorDetails } from '@/components/health-calculators/CalculatorDetails';
 import { useState, useRef } from 'react';
+import { toast } from 'sonner';
 import CalculatorInput from '@/components/health-calculators/CalculatorInput';
 import Content from '@/components/health-calculators/Content';
 import RowContainer from '@/components/health-calculators/RowContainer';
@@ -27,7 +28,7 @@ export default function HeartRateCalculator () {
 
   const handleCalculate = () => {
     if (!age || !heartrate) {
-      alert('Please enter valid age and heart rate values');
+      toast.error('Please enter valid age and heart rate values');
       return;
     }
 

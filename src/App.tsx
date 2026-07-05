@@ -39,6 +39,7 @@ import HeartRateCalculator from './pages/HealthCalculators/HeartRateCalculator';
 import { HealthCalculatorWrapper } from './pages/HealthCalculators/HealthCalculatorsWrapper';
 import ViewClass from './pages/Dashboard/ViewClass';
 import Loading from './components/Loading';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { Toaster } from '@/components/ui/sonner';
 import supabase from '@/client/supabase';
 import { authKeys } from '@/lib/query-keys';
@@ -250,7 +251,7 @@ function App() {
       <AuthSessionBridge />
       <Toaster position="top-right" closeButton />
       <Routes>
-        <Route element={<SidebarLayout />} path="/">
+        <Route element={<ErrorBoundary><SidebarLayout /></ErrorBoundary>} path="/">
           <Route index element={<Home />} />
           <Route path="home" element={<Home />} />
           <Route path="about" element={<About />} />
@@ -311,7 +312,7 @@ function App() {
           <Route path="workout-zone/" element={<WorkoutZone />} />
           <Route path="*" element={<NotFound />} />
         </Route>
-        <Route path="auth" element={<AuthWrapper />}>
+        <Route path="auth" element={<ErrorBoundary><AuthWrapper /></ErrorBoundary>}>
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
           <Route path="forgot-password" element={<ForgotPassword />} />
