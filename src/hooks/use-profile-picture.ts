@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import supabase from '@/client/supabase';
 import { profileKeys } from '@/lib/query-keys';
+import { logger } from '@/utilities/logger';
 
 export function useProfilePicture(userId: string | null): Blob | null {
   const { data } = useQuery({
@@ -10,7 +11,12 @@ export function useProfilePicture(userId: string | null): Blob | null {
       const { data, error } = await supabase.storage
         .from('profile-pictures')
         .download(`${userId}/profilePicture`);
-      if (error) return null;
+      if (error) {
+        if (!error.message?.includes('404')) {
+          logger.error('useProfilePicture download failed', error, { userId });
+        }
+        return null;
+      }
       return data;
     },
     enabled: !!userId,
