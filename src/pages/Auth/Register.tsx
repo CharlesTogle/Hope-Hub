@@ -121,38 +121,39 @@ export default function Register() {
       return;
     }
 
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-    const res = await fetch(`${supabaseUrl}/functions/v1/registration`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${anonKey}`,
-      },
-      body: JSON.stringify({
-        userData: {
-          email: trimmedEmail,
-          password: trimmedPassword,
-          name: trimmedName,
-          userType: state.userType,
-          lectureProgress: LectureProgress(),
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+      const res = await fetch(`${supabaseUrl}/functions/v1/registration`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${anonKey}`,
         },
-      }),
-    });
+        body: JSON.stringify({
+          userData: {
+            email: trimmedEmail,
+            password: trimmedPassword,
+            name: trimmedName,
+            userType: state.userType,
+            lectureProgress: LectureProgress(),
+          },
+        }),
+      });
 
-    const body = await res.json();
+      const body = await res.json();
 
-    if (!res.ok) {
-      const message =
-        res.status === 429
-          ? 'Too many registration attempts. Please wait a moment and try again.'
-          : body?.message ?? 'Registration failed. Please try again.';
-      dispatch({ type: 'set-error', value: message });
-      dispatch({ type: 'set-loading', value: false });
-      return;
-    }
+      if (!res.ok) {
+        const message =
+          res.status === 429
+            ? 'Too many registration attempts. Please wait a moment and try again.'
+            : body?.message ?? 'Registration failed. Please try again.';
+        dispatch({ type: 'set-error', value: message });
+        dispatch({ type: 'set-loading', value: false });
+        return;
+      }
 
-    if (!body?.data?.user) {
+      if (!body?.data?.user) {
       dispatch({
         type: 'set-error',
         value: 'Registration succeeded, but user info is missing.',
@@ -166,6 +167,10 @@ export default function Register() {
       value: 'Verification has been sent to your email',
     });
     dispatch({ type: 'set-loading', value: false });
+    } catch {
+      dispatch({ type: 'set-error', value: 'Network error. Please check your connection and try again.' });
+      dispatch({ type: 'set-loading', value: false });
+    }
   };
 
   return (

@@ -10,6 +10,7 @@ import { fetchLeaderboard } from '@/queries/quiz-queries';
 import { useQuery } from '@tanstack/react-query';
 import { quizKeys } from '@/lib/query-keys';
 import { useQuizStore } from '@/store/quiz-store';
+import { logger } from '@/utilities/logger';
 import type {
   LeaderboardEntry,
   QuizChoice,
@@ -124,9 +125,10 @@ export default function QuizGame({
     answerTimeoutRef.current = setTimeout(async () => {
       setShouldShowPoints(false);
       setIsLoading(true);
+
       let error = await submitAnswer(nextQuizState);
 
-      if (nextQuizState.questionIndex === questions.length) {
+      if (!error && nextQuizState.questionIndex === questions.length) {
         nextQuizState = {
           ...nextQuizState,
           questionIndex: nextQuizState.questionIndex - 1,
@@ -139,6 +141,7 @@ export default function QuizGame({
       if (!error) {
         setQuizState(nextQuizState);
       } else {
+        logger.error('Failed to save quiz answer', error, { quizId, questionIndex: nextQuizState.questionIndex });
         toast.error('Failed to save answer. Please try again.');
       }
 
