@@ -1,4 +1,6 @@
-// src/client/youtubeFetch.js
+// ponytail: KEY is embedded in the bundle — anyone with DevTools can read it.
+// Proxy YouTube through a Supabase Edge Function to remove the key from the client.
+// supabase/functions/youtube-proxy/ is the planned location.
 export const KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
 
 type JsonPrimitive = string | number | boolean | null;

@@ -1,38 +1,7 @@
-import supabase from '@/client/supabase';
 import * as XLSX from 'xlsx';
 import type { ExcelWorkbookData } from '@/types/calculations';
 import type { CleanedStudent } from '@/types/student';
-import type { PFTSessionData, PFTTestResult } from '@/types/physical-fitness';
-
-/**
- * Fetches detailed PFT data for a student
- */
-async function getDetailedPFTData(
-  userId: string,
-  testType: 'pre' | 'post',
-): Promise<PFTSessionData | null> {
-  const columnName: 'pre_physical_fitness_test' | 'post_physical_fitness_test' =
-    testType === 'pre'
-      ? 'pre_physical_fitness_test'
-      : 'post_physical_fitness_test';
-
-  const { data, error } = await supabase
-    .from('physical_fitness_test')
-    .select(columnName)
-    .eq('uuid', userId)
-    .single();
-
-  const row: {
-    pre_physical_fitness_test?: PFTSessionData | null;
-    post_physical_fitness_test?: PFTSessionData | null;
-  } | null = data;
-
-  if (error || !row || !row[columnName]) {
-    return null;
-  }
-
-  return row[columnName] ?? null;
-}
+import type { PFTTestResult } from '@/types/physical-fitness';
 
 /**
  * Formats PFT test data into the required string format
@@ -207,10 +176,7 @@ export async function generateStudentExcel (
       }
     });
 
-    // Fetch Pre-Test PFT Data
-    const preTestData = student.preTestCompleted
-      ? await getDetailedPFTData(student.uuid, 'pre')
-      : null;
+    const preTestData = student.prePFTRaw ?? null;
 
     if (preTestData) {
       // Pre-Test: BMI
@@ -236,10 +202,7 @@ export async function generateStudentExcel (
       }
     }
 
-    // Fetch Post-Test PFT Data
-    const postTestData = student.postTestCompleted
-      ? await getDetailedPFTData(student.uuid, 'post')
-      : null;
+    const postTestData = student.postPFTRaw ?? null;
 
     if (postTestData) {
       // Post-Test: BMI

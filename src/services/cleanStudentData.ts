@@ -21,6 +21,7 @@ export function cleanStudentData(studentData: RawStudentData[]): CleanedStudent[
     const postTest = data.post_physical_fitness_test;
     if (preTest && preTest[0]) {
       const { finishedTestIndex } = preTest[0];
+      clean.prePFTRaw = preTest[0];
       if (finishedTestIndex) {
         clean.preTestCompleted =
           finishedTestIndex &&
@@ -30,6 +31,7 @@ export function cleanStudentData(studentData: RawStudentData[]): CleanedStudent[
 
     if (postTest && postTest[0]) {
       const { finishedTestIndex } = postTest[0];
+      clean.postPFTRaw = postTest[0];
       if (finishedTestIndex) {
         clean.postTestCompleted =
           finishedTestIndex &&

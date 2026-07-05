@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import supabase from '@/client/supabase';
 import type { Profile } from '@/types/auth';
+import { logger } from '@/utilities/logger';
 
 interface AuthState {
   userId: string | null;
@@ -43,7 +44,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await supabase.auth.signOut();
     } catch (error) {
-      console.error('Logout failed', { error });
+      logger.error('Logout failed', error);
     }
     localStorage.removeItem('lectureProgress');
     localStorage.removeItem('physicalFitnessData');

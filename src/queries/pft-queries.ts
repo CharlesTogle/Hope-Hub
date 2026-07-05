@@ -1,6 +1,7 @@
 import supabase from '@/client/supabase';
 import { derivePftStatus } from '@/lib/pft-session';
 import type { PFTColumnName, PFTSessionData } from '@/types/physical-fitness';
+import { logger } from '@/utilities/logger';
 
 export interface PFTRecordRow {
   pre_physical_fitness_test: PFTSessionData | null;
@@ -35,6 +36,7 @@ export async function fetchPftRecord(
     .single();
 
   if (error) {
+    logger.error('fetchPftRecord failed', error, { userId });
     return null;
   }
 
