@@ -60,6 +60,10 @@ export async function fetchPftSummaryForViewer(
     return data[0];
   }
 
+  if (error && error.code !== 'PGRST116' && error.code !== 'PGRST202') {
+    throw error;
+  }
+
   const [{ data: profile, error: profileError }, { data: pftRecord, error: pftError }] =
     await Promise.all([
       supabase

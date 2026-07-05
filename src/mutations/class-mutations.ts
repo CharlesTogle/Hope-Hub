@@ -110,7 +110,13 @@ export async function createTeacherClassCode(
   });
 
   if (error) {
-    throw new Error(`Failed to create class: ${error.message}`);
+    if (error.code === '23505') {
+      throw new Error('This class code already exists. Please try again.');
+    }
+    if (error.code === 'PGRST301' || error.code === 'PGRST302') {
+      throw new Error('You do not have permission to create classes.');
+    }
+    throw new Error('Failed to create class. Please try again.');
   }
 
   return {

@@ -148,7 +148,7 @@ export async function getUserRanking(quizId: number | string): Promise<number | 
     .eq('quiz_id', quizId)
     .eq('status', 'Done')
     .order('points', { ascending: false });
-  if (error) return undefined;
+  if (error) throw error;
   return data
     ?.map((item, index) => ({ user_id: item.user_id, rank: index + 1 }))
     .find((item) => item.user_id === user.id)?.rank;
