@@ -12,9 +12,7 @@ export function useProfilePicture(userId: string | null): Blob | null {
         .from('profile-pictures')
         .download(`${userId}/profilePicture`);
       if (error) {
-        if (!error.message?.includes('404')) {
-          logger.error('useProfilePicture download failed', error, { userId });
-        }
+        logger.error('useProfilePicture download failed', error, { userId });
         return null;
       }
       return data;

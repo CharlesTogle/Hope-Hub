@@ -4,8 +4,7 @@ import type { PostgrestError } from '@supabase/supabase-js';
 import { getCurrentUser } from '@/queries/quiz-queries';
 
 export async function submitAnswer(quizState: QuizState): Promise<PostgrestError | undefined> {
-  const { quizId, questionIndex, score, points, remainingTime: rawRemainingTime, questionsAnswered } = quizState;
-  const remainingTime = Math.max(0, rawRemainingTime);
+  const { quizId, questionIndex, score, points, remainingTime, questionsAnswered } = quizState;
   const user = await getCurrentUser();
 
   const { data: userData } = await supabase
@@ -21,7 +20,7 @@ export async function submitAnswer(quizState: QuizState): Promise<PostgrestError
       question_index: questionIndex,
       score,
       points,
-      remaining_time: remainingTime,
+      remaining_time: Math.max(0, remainingTime),
       questions_answered: questionsAnswered,
     })
     .eq('user_id', user.id)
@@ -49,10 +48,9 @@ export async function markQuizAsDone(quizState: QuizState): Promise<PostgrestErr
 
 export async function updateRemainingTime(quizId: number | string, remainingTime: number): Promise<PostgrestError | undefined> {
   const user = await getCurrentUser();
-  remainingTime = Math.max(0, remainingTime);
   const { error } = await supabase
     .from('quiz_progress')
-    .update({ remaining_time: remainingTime })
+    .update({ remaining_time: Math.max(0, remainingTime) })
     .eq('user_id', user.id)
     .eq('quiz_id', quizId);
   return error ?? undefined;

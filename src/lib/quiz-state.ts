@@ -58,17 +58,12 @@ export async function extractQuizDetails(quizData: QuizWithProgress[]): Promise<
 
   if (!Array.isArray(quizData) || quizData.length === 0) return quizData;
 
-  const rankingPromises = quizData
-    .filter((q) => {
-      const p = Array.isArray(q.quiz_progress) ? q.quiz_progress[0] : null;
-      return p?.date_taken;
-    })
-    .map(async (q) => {
-      const rank = await getUserRanking(q.id);
-      return { id: q.id, rank: rank != null ? String(rank) : '' };
-    });
-  const rankings = await Promise.all(rankingPromises);
-  const rankingMap = new Map(rankings.map((r) => [r.id, r.rank]));
+  const rankings = await Promise.all(
+    quizData
+      .filter((q) => (q.quiz_progress as QuizProgressRow[] | undefined)?.[0]?.date_taken)
+      .map(async (q) => [q.id, String(await getUserRanking(q.id) ?? '')] as const),
+  );
+  const rankingMap = new Map(rankings);
 
   for (const quiz of quizData) {
     const progress: QuizProgressRow | null =
