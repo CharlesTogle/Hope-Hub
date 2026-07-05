@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import ErrorMessage from '@/components/utilities/ErrorMessage';
 import supabase from '@/client/supabase';
+import { logger } from '@/utilities/logger';
 import Loading from '@/components/Loading';
 import type { UserType } from '@/types/auth';
 import type { LectureProgressItem } from '@/types/lecture';
@@ -52,7 +53,7 @@ async function getUserWithMetadataRetry(): Promise<{
     } = await supabase.auth.getUser();
 
     if (error) {
-      console.error('AccountVerification getUser failed', { error, attempt });
+      logger.error('AccountVerification getUser failed', error, { attempt });
     }
 
     if (user?.user_metadata) {
@@ -107,10 +108,7 @@ async function verifyAccount(
         try {
           await supabase.auth.admin.deleteUser(user.id);
         } catch (error) {
-          console.error('AccountVerification deleteUser failed', {
-            userId: user.id,
-            error,
-          });
+          logger.error('AccountVerification deleteUser failed', error, { userId: user.id });
           return {
             status: 'expired',
             errorMessage:
@@ -121,7 +119,7 @@ async function verifyAccount(
         }
       }
     } catch (error) {
-      console.error('AccountVerification expired-link handling failed', { error });
+      logger.error('AccountVerification expired-link handling failed', error);
     }
 
     await supabase.auth.signOut();
@@ -145,7 +143,7 @@ async function verifyAccount(
     });
 
     if (sessionError) {
-      console.error('AccountVerification setSession failed', { sessionError });
+      logger.error('AccountVerification setSession failed', sessionError);
       return {
         status: 'bad-request',
         errorMessage: 'Verification failed. Please try registering again.',

@@ -6,6 +6,7 @@ import InputContainer from '@/components/auth/InputContainer';
 import FormButton from '@/components/auth/FormButton';
 import { useEffect, useReducer, useRef } from 'react';
 import supabase from '@/client/supabase';
+import { logger } from '@/utilities/logger';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 interface ChangePasswordState {
@@ -108,7 +109,7 @@ export default function ChangePassword() {
       });
 
       if (sessionError) {
-        console.error('ChangePassword setSession failed', { sessionError });
+        logger.error('ChangePassword setSession failed', sessionError);
         dispatch({
           type: 'set-error',
           value: 'This password reset link is invalid or has expired.',
@@ -123,7 +124,7 @@ export default function ChangePassword() {
     });
 
     if (error) {
-      console.error('ChangePassword failed', { error });
+      logger.error('ChangePassword failed', error);
       dispatch({
         type: 'set-error',
         value: 'Failed to update password. Please try again.',
