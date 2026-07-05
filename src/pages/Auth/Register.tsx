@@ -154,19 +154,19 @@ export default function Register() {
       }
 
       if (!body?.data?.user) {
+        dispatch({
+          type: 'set-error',
+          value: 'Registration succeeded, but user info is missing.',
+        });
+        dispatch({ type: 'set-loading', value: false });
+        return;
+      }
+
       dispatch({
-        type: 'set-error',
-        value: 'Registration succeeded, but user info is missing.',
+        type: 'set-success',
+        value: 'Verification has been sent to your email',
       });
       dispatch({ type: 'set-loading', value: false });
-      return;
-    }
-
-    dispatch({
-      type: 'set-success',
-      value: 'Verification has been sent to your email',
-    });
-    dispatch({ type: 'set-loading', value: false });
     } catch {
       dispatch({ type: 'set-error', value: 'Network error. Please check your connection and try again.' });
       dispatch({ type: 'set-loading', value: false });
