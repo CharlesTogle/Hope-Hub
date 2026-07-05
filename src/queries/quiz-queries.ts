@@ -38,17 +38,12 @@ export async function fetchQuizzesOfUser(user: User): Promise<QuizWithProgress[]
     !pftData.post_physical_fitness_test.finishedTestIndex.includes(-1) &&
     !pftData.pre_physical_fitness_test.finishedTestIndex.includes(-1)
   ) {
-    const { data: existing } = await supabase
+    await supabase
       .from('quiz_progress')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('quiz_id', 0);
-
-    if (existing && existing.length === 0) {
-      await supabase
-        .from('quiz_progress')
-        .insert([{ user_id: user.id, quiz_id: 0, status: 'Pending' as const }]);
-    }
+      .upsert(
+        { user_id: user.id, quiz_id: 0, status: 'Pending' as const },
+        { onConflict: 'user_id, quiz_id', ignoreDuplicates: true },
+      );
   }
 
   const { data, error } = await supabase

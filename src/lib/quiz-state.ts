@@ -1,7 +1,6 @@
 import supabase from '@/client/supabase';
 import type { QuizState, QuizProgressRow, QuizWithProgress } from '@/types/quiz';
-import { getCurrentUser } from '@/queries/quiz-queries';
-import { getUserRanking } from '@/queries/quiz-queries';
+import { getCurrentUser, getUserRanking } from '@/queries/quiz-queries';
 
 function normalizeQuizRunStatus(
   status: QuizProgressRow['status'] | null | undefined,
@@ -59,6 +58,18 @@ export async function extractQuizDetails(quizData: QuizWithProgress[]): Promise<
 
   if (!Array.isArray(quizData) || quizData.length === 0) return quizData;
 
+  const rankingPromises = quizData
+    .filter((q) => {
+      const p = Array.isArray(q.quiz_progress) ? q.quiz_progress[0] : null;
+      return p?.date_taken;
+    })
+    .map(async (q) => {
+      const rank = await getUserRanking(q.id);
+      return { id: q.id, rank: rank != null ? String(rank) : '' };
+    });
+  const rankings = await Promise.all(rankingPromises);
+  const rankingMap = new Map(rankings.map((r) => [r.id, r.rank]));
+
   for (const quiz of quizData) {
     const progress: QuizProgressRow | null =
       (Array.isArray(quiz.quiz_progress) ? quiz.quiz_progress[0] : null) ?? null;
@@ -69,7 +80,7 @@ export async function extractQuizDetails(quizData: QuizWithProgress[]): Promise<
       ? {}
       : {
           Score: `${progress.score}/${progress.total_items}`,
-          Ranking: String(await getUserRanking(quiz.id)),
+          Ranking: rankingMap.get(quiz.id) ?? '',
           'Date Taken': new Date(progress.date_taken).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',

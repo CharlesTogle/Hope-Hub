@@ -5,8 +5,6 @@ import FormInput from '@/components/auth/FormInput';
 import InputContainer from '@/components/auth/InputContainer';
 import FormButton from '@/components/auth/FormButton';
 import { useReducer } from 'react';
-import useRateLimiter from '@/hooks/useRateLimiter';
-import supabase from '@/client/supabase';
 import LectureProgress from '@/utilities/LectureProgress';
 import type { UserType } from '@/types/auth';
 
@@ -66,7 +64,6 @@ function reducer(state: RegisterState, action: RegisterAction): RegisterState {
 
 export default function Register() {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const isRateLimited = useRateLimiter();
 
   const handlePasswordChange = (value: string) => {
     dispatch({ type: 'set-field', field: 'password', value });
@@ -108,9 +105,6 @@ export default function Register() {
       trimmedName,
     ];
 
-    const rateLimitResult = isRateLimited();
-    const rateLimited = rateLimitResult !== false ? rateLimitResult.type : null;
-
     const areAllFieldsFilled = fields.every((field) => field !== '');
     if (!areAllFieldsFilled) {
       dispatch({ type: 'set-error', value: 'Please fill up all required fields' });
@@ -127,48 +121,38 @@ export default function Register() {
       return;
     }
 
-    if (rateLimited === 'exceeded') {
-      dispatch({
-        type: 'set-error',
-        value:
-        'Too many registration attempts. Please wait 5 minutes or try again in a few seconds.',
-      });
-      dispatch({ type: 'set-loading', value: false });
-      return;
-    }
-
-    if (rateLimited === 'too-fast') {
-      dispatch({
-        type: 'set-error',
-        value:
-        'You are attempting too fast. Please wait for 10 seconds and try again',
-      });
-      dispatch({ type: 'set-loading', value: false });
-      return;
-    }
-
-    const { data, error } = await supabase.auth.signUp({
-      email: trimmedEmail,
-      password: trimmedPassword,
-      options: {
-        emailRedirectTo:
-          `${import.meta.env.VITE_APP_URL as string}/auth/account-verification`,
-        data: {
-          fullName: trimmedName,
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+    const res = await fetch(`${supabaseUrl}/functions/v1/registration`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${anonKey}`,
+      },
+      body: JSON.stringify({
+        userData: {
+          email: trimmedEmail,
+          password: trimmedPassword,
+          name: trimmedName,
           userType: state.userType,
-          classCode: null,
           lectureProgress: LectureProgress(),
         },
-      },
+      }),
     });
 
-    if (error) {
-      dispatch({ type: 'set-error', value: error.message });
+    const body = await res.json();
+
+    if (!res.ok) {
+      const message =
+        res.status === 429
+          ? 'Too many registration attempts. Please wait a moment and try again.'
+          : body?.message ?? 'Registration failed. Please try again.';
+      dispatch({ type: 'set-error', value: message });
       dispatch({ type: 'set-loading', value: false });
       return;
     }
 
-    if (!data || !data.user) {
+    if (!body?.data?.user) {
       dispatch({
         type: 'set-error',
         value: 'Registration succeeded, but user info is missing.',

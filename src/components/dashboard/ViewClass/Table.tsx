@@ -8,6 +8,7 @@ import {
 } from '@/utilities/exportStudentExcel';
 import { useState } from 'react';
 import type { CleanedStudent } from '@/types/student';
+import { logger } from '@/utilities/logger';
 
 interface TableProps {
   headings: string[];
@@ -51,7 +52,7 @@ export default function Table({ headings, content, classCode }: TableProps) {
       );
       downloadExcel(excelData, filename);
     } catch (error) {
-      console.error('Error exporting student Excel:', error);
+      logger.error('Error exporting student Excel', error);
       toast.error('Failed to export student data. Please try again.');
     } finally {
       setExportingStudent(null);

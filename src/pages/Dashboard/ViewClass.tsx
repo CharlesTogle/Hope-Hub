@@ -6,6 +6,7 @@ import { cleanStudentData } from '@/services/cleanStudentData';
 import ErrorMessage from '@/components/utilities/ErrorMessage';
 import Loading from '@/components/Loading';
 import { toast } from 'sonner';
+import { logger } from '@/utilities/logger';
 import {
   generateStudentExcel,
   downloadExcel,
@@ -131,7 +132,7 @@ export default function ViewClass () {
       const filename = generateFilename('class', classCode ?? '');
       downloadExcel(excelData, filename);
     } catch (error) {
-      console.error('Error exporting Excel:', error);
+      logger.error('Error exporting Excel', error);
       toast.error('Failed to export Excel file. Please try again.');
     } finally {
       setIsExporting(false);

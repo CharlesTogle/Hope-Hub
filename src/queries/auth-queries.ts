@@ -1,5 +1,6 @@
 import supabase from '@/client/supabase';
 import type { Profile } from '@/types/auth';
+import { logger } from '@/utilities/logger';
 
 export interface AuthSessionData {
   userId: string | null;
@@ -13,9 +14,7 @@ export async function fetchAuthenticatedProfile(): Promise<AuthSessionData> {
   } = await supabase.auth.getSession();
 
   if (sessionError) {
-    console.error('fetchAuthenticatedProfile getSession failed', {
-      sessionError,
-    });
+    logger.error('fetchAuthenticatedProfile getSession failed', sessionError);
     return {
       userId: null,
       profile: null,
@@ -36,10 +35,7 @@ export async function fetchAuthenticatedProfile(): Promise<AuthSessionData> {
     .single();
 
   if (error) {
-    console.error('fetchAuthenticatedProfile profile lookup failed', {
-      userId: session.user.id,
-      error,
-    });
+    logger.error('fetchAuthenticatedProfile profile lookup failed', error, { userId: session.user.id });
     return {
       userId: null,
       profile: null,

@@ -1,5 +1,6 @@
 import supabase from '@/client/supabase';
 import type { ClassCode, DashboardQuizRow, ProgressStats, StudentPftStatus } from '@/types/student';
+import { logger } from '@/utilities/logger';
 
 export async function fetchLectureProgressSummary(
   userId: string,
@@ -11,6 +12,7 @@ export async function fetchLectureProgressSummary(
     .single();
 
   if (error) {
+    logger.error('fetchLectureProgressSummary failed', error, { userId });
     return { completed: 0, incomplete: 0, pending: 0, total: 0 };
   }
 
@@ -46,6 +48,7 @@ export async function fetchStudentQuizProgressSummary(
     .eq('user_id', userId);
 
   if (error) {
+    logger.error('fetchStudentQuizProgressSummary failed', error, { userId });
     return { completed: 0, incomplete: 0, pending: 0, total: quizCount };
   }
 

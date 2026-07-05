@@ -9,7 +9,7 @@ export function useStudentName(userId: string | null): string {
       const { data, error } = await supabase
         .from('profile')
         .select('full_name')
-        .eq('uuid', userId!)
+        .eq('uuid', userId)
         .single();
       if (error || !data) return '';
       return data.full_name ?? '';

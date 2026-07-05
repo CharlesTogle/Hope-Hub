@@ -13,6 +13,7 @@ import { fetchAuthenticatedProfile } from '@/queries/auth-queries';
 import { useAuthStore } from '@/store/auth-store';
 import { useNavigate } from 'react-router-dom';
 import useRateLimiter from '@/hooks/useRateLimiter';
+import { logger } from '@/utilities/logger';
 
 interface LoginState {
   email: string;
@@ -149,7 +150,7 @@ export default function Login() {
       });
 
       if (error) {
-        console.error('Login failed', { error });
+        logger.error('Login failed', error);
         dispatch({
           type: 'set-error',
           value: getLoginErrorMessage(error),
@@ -160,9 +161,7 @@ export default function Login() {
       const authSession = await fetchAuthenticatedProfile();
 
       if (!authSession.userId || !authSession.profile) {
-        console.error('Login succeeded but profile could not be loaded', {
-          email: state.email,
-        });
+        logger.error('Login succeeded but profile could not be loaded', 'missing profile', { email: state.email });
         await supabase.auth.signOut();
         queryClient.setQueryData(authKeys.current(), {
           userId: null,
@@ -180,7 +179,7 @@ export default function Login() {
       dispatch({ type: 'set-success', value: 'Login Success' });
       navigate('/dashboard', { replace: true });
     } catch (error) {
-      console.error('Unexpected login error', { error });
+      logger.error('Unexpected login error', error);
       dispatch({
         type: 'set-error',
         value: getLoginErrorMessage(error),

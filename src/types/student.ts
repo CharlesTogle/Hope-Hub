@@ -2,6 +2,8 @@ import type { LectureProgressItem } from './lecture';
 import type { DbQuizStatus } from './quiz';
 import type { PFTSessionData } from './physical-fitness';
 
+export type { PFTSessionData };
+
 export interface ClassCode {
   class_code: string;
   class_name: string;
@@ -51,6 +53,8 @@ export interface CleanedStudentBase {
   uuid: string;
   preTestCompleted: boolean;
   postTestCompleted: boolean;
+  prePFTRaw?: PFTSessionData;
+  postPFTRaw?: PFTSessionData;
 }
 
 export type CleanedStudent = CleanedStudentBase & Record<string, string | boolean>;
