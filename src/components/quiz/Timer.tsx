@@ -4,6 +4,7 @@ import { updateRemainingTime } from '@/mutations/quiz-mutations';
 import { useParams } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useQuizStore } from '@/store/quiz-store';
+import { logger } from '@/utilities/logger';
 
 interface TimerProps {
   duration: number;
@@ -37,8 +38,8 @@ export default function Timer({ duration, color, onTimerEnd }: TimerProps) {
         setRemainingTime(remainingTime);
       }
       if (quizId) {
-        updateRemainingTime(quizId, remainingTime).then((error) => {
-          if (error) console.error('Failed to sync timer', { quizId, remainingTime, error });
+        updateRemainingTime(quizId, remainingTime).catch((error) => {
+          logger.error('Timer sync failed', error, { quizId, remainingTime });
         });
       }
     }, 1000);

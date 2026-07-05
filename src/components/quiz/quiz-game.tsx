@@ -126,21 +126,21 @@ export default function QuizGame({
       setShouldShowPoints(false);
       setIsLoading(true);
 
-      let error = await submitAnswer(nextQuizState);
+      try {
+        await submitAnswer(nextQuizState);
 
-      if (!error && nextQuizState.questionIndex === questions.length) {
-        nextQuizState = {
-          ...nextQuizState,
-          questionIndex: nextQuizState.questionIndex - 1,
-          status: 'Done',
-        };
+        if (nextQuizState.questionIndex === questions.length) {
+          nextQuizState = {
+            ...nextQuizState,
+            questionIndex: nextQuizState.questionIndex - 1,
+            status: 'Done',
+          };
 
-        error = await markQuizAsDone(nextQuizState);
-      }
+          await markQuizAsDone(nextQuizState);
+        }
 
-      if (!error) {
         setQuizState(nextQuizState);
-      } else {
+      } catch (error) {
         logger.error('Failed to save quiz answer', error, { quizId, questionIndex: nextQuizState.questionIndex });
         toast.error('Failed to save answer. Please try again.');
       }
