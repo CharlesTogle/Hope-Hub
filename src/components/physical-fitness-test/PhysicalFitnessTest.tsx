@@ -319,13 +319,11 @@ export default function PhysicalFitnessTest({
 
     const startTimeInMinutes = parseTime(testResults.timeStarted);
     const endTimeInMinutes = parseTime(testResults.timeEnded);
-    const currentTimeInMinutes = parseTime(nowTime);
     const isStartTimeAfterEndTime = testResults.timeStarted > testResults.timeEnded;
-    const isEndTimeAfterCurrentTime = endTimeInMinutes > currentTimeInMinutes;
     const isTimeThresholdReached = endTimeInMinutes - startTimeInMinutes <= 2;
     const isTimeEndValid = endTimeInMinutes - startTimeInMinutes > 20;
 
-    if (isStartTimeAfterEndTime || isEndTimeAfterCurrentTime) {
+    if (isStartTimeAfterEndTime) {
       dispatch({
         type: 'show-alert',
         message: "Please input a valid time for 'Time End'",
