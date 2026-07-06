@@ -25,9 +25,11 @@ const TipsAndInterpretation = ({
       <hr className='w-[50%] border-1 border-black mb-1' />
       <div id='interpretation' className='mb-3'>
         <h2 className='font-semibold text-lg font-content'>{testName}</h2>
-        <p className='ml-2 font-bold text-lg font-content'>
-          {testResults.reps} : {testResults.classification}
-        </p>
+        {testResults.reps && (
+          <p className='ml-2 font-bold text-lg font-content'>
+            {testResults.reps} : {testResults.classification}
+          </p>
+        )}
       </div>
       <div id='tips' className='pb-10'>
         <h2 className='font-content text-sm font-semibold'>Tips to Improve</h2>
