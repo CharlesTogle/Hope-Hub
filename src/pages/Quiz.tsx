@@ -26,15 +26,24 @@ export default function Quiz() {
 }
 
 function TeacherQuizView({ quizId }: { quizId?: string }) {
-  const { data: questions, isLoading } = useQuery({
+  const { data: questions, isLoading, isError } = useQuery({
     queryKey: quizKeys.detail(quizId ?? ''),
     queryFn: () => fetchQuizQuestions(quizId!),
     enabled: !!quizId,
     staleTime: 1000 * 60 * 5,
   });
 
-  if (!quizId || isLoading || !questions) {
+  if (!quizId || isLoading) {
     return <Loading />;
+  }
+
+  if (isError || !questions) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] p-4 text-center">
+        <p className="text-red text-lg font-semibold">Failed to load quiz questions.</p>
+        <p className="text-gray-500 mt-2">Please try refreshing the page.</p>
+      </div>
+    );
   }
 
   return (
@@ -99,7 +108,11 @@ function QuestionCard({
 export function QuizPage() {
   const { quizId } = useParams<{ quizId: string }>();
   const profile = useAuthStore((state) => state.profile);
-  const userType = profile?.user_type ?? 'student';
+  const authLoading = useAuthStore((state) => state.isLoading);
+
+  if (authLoading) return <Loading />;
+
+  const userType = profile?.user_type;
 
   if (userType === 'teacher') {
     return <TeacherQuizView quizId={quizId} />;
@@ -114,7 +127,7 @@ function StudentQuizView({ quizId }: { quizId?: string }) {
   const initializeQuiz = useQuizStore((state) => state.initializeQuiz);
   const resetQuizStore = useQuizStore((state) => state.reset);
 
-  const { data: quizData, isLoading: isQuizLoading } = useQuery({
+  const { data: quizData, isLoading: isQuizLoading, isError } = useQuery({
     queryKey: quizKeys.detail(quizId ?? ''),
     queryFn: async () => {
       if (!quizId) {
@@ -149,6 +162,15 @@ function StudentQuizView({ quizId }: { quizId?: string }) {
     enabled: !!quizId,
     staleTime: 0,
   });
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] p-4 text-center">
+        <p className="text-red text-lg font-semibold">Failed to load quiz.</p>
+        <p className="text-gray-500 mt-2">Please try refreshing the page.</p>
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (!quizData) {
