@@ -408,6 +408,12 @@ export default function PhysicalFitnessTest({
 
     await persistSession(updatedPhysicalFitnessData);
 
+    if (testIndex >= PhysicalFitnessTestList.length - 1) {
+      scrollToTop();
+      navigate('/dashboard');
+      return;
+    }
+
     if (physicalFitnessData.finishedTestIndex.length >= testIndex) {
       resetForNextStep(nowTime);
     }
@@ -418,10 +424,19 @@ export default function PhysicalFitnessTest({
     testDetails,
     testIndex,
     testResults.reps,
+    scrollToTop,
+    navigate,
     userId,
   ]);
 
   useEffect(() => {
+    if (!testDetails) {
+      if (isTeacher) {
+        navigate('/dashboard');
+      }
+      return;
+    }
+
     const handleKeyPress = (event: KeyboardEvent) => {
       if (event.key === 'Enter') {
         void handleSubmit();
@@ -430,7 +445,7 @@ export default function PhysicalFitnessTest({
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [handleSubmit]);
+  }, [handleSubmit, testDetails, isTeacher, navigate]);
 
   if (!testDetails) {
     return null;
@@ -521,23 +536,52 @@ export default function PhysicalFitnessTest({
           id="results-interpretation-tips"
           className="flex flex-col space-y-5"
         >
-          <ResultSection
-            testName={title}
-            handleResultChange={handleResultChange}
-            handleSubmit={() => {
-              void (isTeacher ? handleNextExerciseTeacher() : handleSubmit());
-            }}
-            handleBack={handleBackForTeacher}
-            testResults={testResults}
-            unit={unit}
-            isTeacher={isTeacher}
-            testNumber={testIndex}
-          />
-          <TipsAndInterpretation
-            testName={title}
-            testResults={testResults}
-            tips={tips}
-          />
+          {isTeacher ? (
+            <>
+              <TipsAndInterpretation
+                testName={title}
+                testResults={testResults}
+                tips={tips}
+              />
+              <div className="flex flex-row items-center justify-between">
+                <button
+                  onClick={handleBackForTeacher}
+                  type="button"
+                  className="border-1 border-black rounded-md px-5 py-2 text-sm bg-white hover:brightness-95 cursor-pointer disabled:bg-gray-200 disabled:hover:brightness-100 disabled:cursor-not-allowed"
+                  disabled={testIndex === 0}
+                >
+                  Back
+                </button>
+                <button
+                  onClick={() => handleNextExerciseTeacher()}
+                  type="button"
+                  className="border-1 border-black rounded-md px-5 py-2 text-sm bg-white hover:brightness-95 cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            </>
+          ) : (
+            <ResultSection
+              testName={title}
+              handleResultChange={handleResultChange}
+              handleSubmit={() => {
+                void handleSubmit();
+              }}
+              handleBack={handleBackForTeacher}
+              testResults={testResults}
+              unit={unit}
+              isTeacher={isTeacher}
+              testNumber={testIndex}
+            />
+          )}
+          {!isTeacher && (
+            <TipsAndInterpretation
+              testName={title}
+              testResults={testResults}
+              tips={tips}
+            />
+          )}
         </div>
       </div>
     </div>
