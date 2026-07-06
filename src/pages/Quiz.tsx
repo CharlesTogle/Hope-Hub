@@ -13,7 +13,8 @@ import { useQuery } from '@tanstack/react-query';
 import { extractQuizState } from '@/lib/quiz-state';
 import { quizKeys } from '@/lib/query-keys';
 import { useQuizStore } from '@/store/quiz-store';
-import type { QuizState } from '@/types/quiz';
+import { useAuthStore } from '@/store/auth-store';
+import type { QuizState, QuizQuestion } from '@/types/quiz';
 
 export default function Quiz() {
   return (
@@ -24,12 +25,95 @@ export default function Quiz() {
   );
 }
 
+function TeacherQuizView({ quizId }: { quizId?: string }) {
+  const { data: questions, isLoading } = useQuery({
+    queryKey: quizKeys.detail(quizId ?? ''),
+    queryFn: () => fetchQuizQuestions(quizId!),
+    enabled: !!quizId,
+    staleTime: 1000 * 60 * 5,
+  });
+
+  if (!quizId || isLoading || !questions) {
+    return <Loading />;
+  }
+
+  return (
+    <div className="w-full lg:w-[70%] flex flex-col items-center justify-center text-black font-content mx-auto mb-8">
+      <div className="self-baseline my-5 ml-8">
+        <h2 className="font-heading-small text-2xl lg:text-3xl text-primary-blue">
+          Quiz Preview - All Questions & Answers
+        </h2>
+        <hr className="w-[60%] border-1 border-primary-yellow mt-2 mb-3" />
+      </div>
+      {questions.map((question, index) => (
+        <QuestionCard key={index} question={question} index={index} />
+      ))}
+    </div>
+  );
+}
+
+function QuestionCard({
+  question,
+  index,
+}: {
+  question: QuizQuestion;
+  index: number;
+}) {
+  return (
+    <div className="rounded-xl border-2 border-primary-blue py-5 px-8 my-2 lg:my-4 w-[90%] text-sm lg:text-base">
+      <p className="whitespace-pre-line font-semibold">
+        {index + 1}. {question.question}
+      </p>
+      <hr className="border-1 border-black/30 my-3" />
+      {question.type === 'identification' ? (
+        <div className="my-1">
+          <p>
+            <span className="font-semibold text-green">Answer: </span>
+            {question.answer}
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col items-baseline gap-y-2 my-3">
+          {(question.choices ?? []).map((choice) => (
+            <div key={choice.text} className="flex items-center gap-x-2">
+              <div
+                className={`w-[15px] h-[15px] rounded-full shrink-0 ${
+                  choice.isCorrect ? 'bg-green' : 'bg-[#D9D9D9]'
+                }`}
+              />
+              <p
+                className={
+                  choice.isCorrect ? 'font-semibold text-green' : ''
+                }
+              >
+                {choice.text}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function QuizPage() {
   const { quizId } = useParams<{ quizId: string }>();
+  const profile = useAuthStore((state) => state.profile);
+  const userType = profile?.user_type ?? 'student';
+
+  if (userType === 'teacher') {
+    return <TeacherQuizView quizId={quizId} />;
+  }
+
+  return <StudentQuizView quizId={quizId} />;
+}
+
+function StudentQuizView({ quizId }: { quizId?: string }) {
   const questions = useQuizStore((state) => state.questions);
   const quizState = useQuizStore((state) => state.quizState);
   const initializeQuiz = useQuizStore((state) => state.initializeQuiz);
   const resetQuizStore = useQuizStore((state) => state.reset);
+
   const { data: quizData, isLoading: isQuizLoading } = useQuery({
     queryKey: quizKeys.detail(quizId ?? ''),
     queryFn: async () => {

@@ -1,7 +1,11 @@
 function getDataFromStorage<T>(key: string): T | null {
   const storedData = localStorage.getItem(key);
   if (!storedData) return null;
-  return JSON.parse(storedData) as T;
+  try {
+    return JSON.parse(storedData) as T;
+  } catch {
+    return null;
+  }
 }
 
 export default getDataFromStorage;

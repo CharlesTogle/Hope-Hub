@@ -1,4 +1,5 @@
 import { getWaterIntake } from '@/services/Calculations';
+import { renderHtml } from '@/utilities/render-html';
 import { highlightedData } from '@/utilities/CalculatorData';
 import Container from '@/components/health-calculators/Container';
 import CalculatorContainer from '@/components/health-calculators/CalculatorContainer';
@@ -174,10 +175,9 @@ export default function WaterIntakeCalculator () {
         <Container heading='Instructions'>
           <ol className='list-decimal text-justify font-content mx-2 mb-3 md:mb-5 text-xs md:text-base'>
             {instructions.map((instruction) => (
-              <li
-                dangerouslySetInnerHTML={{ __html: instruction }}
-                key={instruction}
-              />
+              <li key={instruction}>
+                {renderHtml(instruction)}
+              </li>
             ))}
           </ol>
         </Container>
