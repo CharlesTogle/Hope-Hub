@@ -65,7 +65,7 @@ function createInitialTestResults(timeValue: string): TestResultsState {
     reps: '',
     timeStarted: timeValue,
     timeEnded: '',
-    classification: 'No data available',
+    classification: '',
   };
 }
 
