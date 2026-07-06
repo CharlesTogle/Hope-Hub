@@ -136,7 +136,12 @@ function StudentQuizView({ quizId }: { quizId?: string }) {
 
       const loadedQuestions = await fetchQuizQuestions(quizId);
       const rawState = await fetchQuizStateIfExists(quizId);
-      const extractedState = await extractQuizState(quizId, rawState);
+      let extractedState;
+      try {
+        extractedState = await extractQuizState(quizId, rawState);
+      } catch {
+        extractedState = null;
+      }
       const initialQuizState: QuizState = extractedState ?? {
         quizId,
         questionIndex: 0,

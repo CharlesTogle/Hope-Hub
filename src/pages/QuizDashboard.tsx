@@ -166,13 +166,6 @@ function Card({
     cardBody
   ) : (
     <Link
-      onClick={() => {
-        if (userType === 'teacher')
-          toast.info('You are about to start the demo of the quiz.', {
-            duration: 5000,
-            className: '!bg-secondary-dark-blue !text-white !border-secondary-dark-blue',
-          });
-      }}
       to={`quiz/${quizNumber}`}
     >
       {cardBody}
