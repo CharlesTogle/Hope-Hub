@@ -1,4 +1,5 @@
 import { useCallback, useReducer, useRef } from 'react';
+import { renderHtml } from '@/utilities/render-html';
 import { toast } from 'sonner';
 import { getBMR, getCalorieGoals } from '@/services/Calculations';
 import { highlightedData } from '@/utilities/CalculatorData';
@@ -365,10 +366,9 @@ export default function BMRCalculator() {
         <Container heading="Instructions">
           <ol className="list-decimal font-content mx-2 mb-3 md:mb-5 text-xs md:text-basetext-xs md:text-base text-justify">
             {instructions.map((instruction) => (
-              <li
-                dangerouslySetInnerHTML={{ __html: instruction }}
-                key={instruction}
-              />
+              <li key={instruction}>
+                {renderHtml(instruction)}
+              </li>
             ))}
           </ol>
         </Container>

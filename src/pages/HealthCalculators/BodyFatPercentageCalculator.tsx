@@ -1,4 +1,5 @@
 import { useReducer, useRef } from 'react';
+import { renderHtml } from '@/utilities/render-html';
 import { toast } from 'sonner';
 import { getBodyFatPercentage } from '@/services/Calculations';
 import { highlightedData } from '@/utilities/CalculatorData';
@@ -341,10 +342,9 @@ export default function BodyFatPercentageCalculator() {
         <Container heading="Instructions">
           <ol className="list-decimal text-justify mx-2 mb-3 md:mb-5 font-content text-xs md:text-base">
             {instructions.map((instruction) => (
-              <li
-                dangerouslySetInnerHTML={{ __html: instruction }}
-                key={instruction}
-              />
+              <li key={instruction}>
+                {renderHtml(instruction)}
+              </li>
             ))}
           </ol>
         </Container>
