@@ -8,18 +8,13 @@ import ErrorMessage from '@/components/utilities/ErrorMessage';
 import Loading from '@/components/Loading';
 import { pftKeys } from '@/lib/query-keys';
 import {
+  derivePftStatus,
   isFinishedTestSession,
   resetPftProgress,
 } from '@/lib/pft-session';
-import { fetchPftStatus } from '@/queries/pft-queries';
+import { fetchPftRecord } from '@/queries/pft-queries';
 import { usePhysicalFitnessStore } from '@/store/physical-fitness-store';
 import { useAuthStore } from '@/store/auth-store';
-import type { PFTColumnName } from '@/types/physical-fitness';
-
-interface PFTStatus {
-  isTaken: boolean;
-  testType: PFTColumnName;
-}
 
 export function PhysicalFitnessTestPage() {
   const { testIndex = '0' } = useParams<{ testIndex: string }>();
@@ -42,21 +37,23 @@ export function PhysicalFitnessTestPage() {
     (!finishedTestIndex.includes(currentTestIndex - 1) ||
       finishedTestIndex.length <= currentTestIndex);
 
-  const { data: pftStatus, isLoading: pftLoading } = useQuery<PFTStatus>({
+  const { data: pftRecord, isFetching: pftFetching } = useQuery({
     queryKey: pftKeys.session(userId ?? ''),
-    queryFn: () => fetchPftStatus(userId ?? ''),
+    queryFn: () => fetchPftRecord(userId ?? ''),
     enabled: !!userId,
   });
 
+  const pftStatus = pftRecord ? derivePftStatus(pftRecord) : null;
+
   useEffect(() => {
-    if (pftLoading || !userId || isTeacher) {
+    if (pftFetching || !userId || isTeacher) {
       return;
     }
 
     if (!currentSessionData.isPARQFinished) {
       navigate('/physical-fitness-test/parq');
     }
-  }, [pftLoading, userId, isTeacher, navigate]);
+  }, [pftFetching, userId, isTeacher, navigate]);
 
   useEffect(() => {
     if (!isFinishedTestSession(currentSessionData)) {
@@ -87,7 +84,7 @@ export function PhysicalFitnessTestPage() {
     navigate('/physical-fitness-test/parq');
   };
 
-  if (pftLoading || !userId) {
+  if (pftFetching || !userId) {
     return <Loading />;
   }
 
