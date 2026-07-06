@@ -9,6 +9,7 @@ import type {
   QuizWithProgress,
 } from '@/types/quiz';
 import type { User } from '@supabase/supabase-js';
+import { logger } from '@/utilities/logger';
 
 export async function getCurrentUser(): Promise<User> {
   const { data: { user }, error } = await supabase.auth.getUser();
@@ -89,7 +90,10 @@ export async function getQuestionsFromQuizProgressIfExists(quizId: number | stri
     .eq('quiz_id', quizId)
     .eq('user_id', user.id)
     .single();
-  if (error) return null;
+  if (error) {
+    logger.error('getQuestionsFromQuizProgressIfExists failed', error, { quizId });
+    return null;
+  }
   return (data as Pick<QuizProgressRow, 'questions_shuffled'>)?.questions_shuffled ?? null;
 }
 
@@ -136,7 +140,10 @@ export async function fetchQuizStateIfExists(quizId: number | string): Promise<Q
     .eq('quiz_id', quizId)
     .eq('user_id', user.id)
     .single();
-  if (error) return null;
+  if (error) {
+    logger.error('fetchQuizStateIfExists failed', error, { quizId });
+    return null;
+  }
   return data as QuizProgressRow;
 }
 
@@ -164,7 +171,10 @@ export async function fetchLeaderboard(
     .eq('status', 'Done')
     .order('points', { ascending: false })
     .limit(5);
-  if (error || !data) return [];
+  if (error || !data) {
+    if (error) logger.error('fetchLeaderboard failed', error, { quizId });
+    return [];
+  }
   const currentUser = await getCurrentUser();
   const leaderboardRows = data as Array<{
     user_id: string;
