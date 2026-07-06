@@ -101,19 +101,19 @@ export default function PhysicalActivityReadinessQuestionnaire() {
     physicalFitnessData.gender && physicalFitnessData.category
   );
 
-  const { data: pftRecord, isLoading } = useQuery({
+  const { data: pftRecord, isFetching } = useQuery({
     queryKey: pftKeys.session(userId ?? ''),
     queryFn: () => fetchPftRecord(userId ?? ''),
     enabled: !!userId,
   });
 
   useEffect(() => {
-    if (isLoading || userType !== 'teacher' || !userId) {
+    if (isFetching || userType !== 'teacher' || !userId) {
       return;
     }
 
     void navigateTeacher();
-  }, [isLoading, userId, userType]);
+  }, [isFetching, userId, userType]);
 
   const navigateTeacher = async () => {
     if (!userId) {
@@ -257,7 +257,7 @@ export default function PhysicalActivityReadinessQuestionnaire() {
     updateField(keyName, value);
   };
 
-  if (isLoading || !userId || userType === 'teacher') return <Loading />;
+  if (isFetching || !userId || userType === 'teacher') return <Loading />;
 
   return (
     <div id="physical-fitness-test-parq" className="w-full min-h-screen max-h-fit">
