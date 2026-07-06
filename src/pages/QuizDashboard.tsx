@@ -6,7 +6,6 @@ import { fetchQuizzes } from '@/queries/quiz-queries';
 import { extractQuizDetails } from '@/lib/quiz-state';
 import Loading from '@/components/Loading';
 import Footer from '@/components/Footer';
-import { toast } from 'sonner';
 import { quizKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useEffect } from 'react';
