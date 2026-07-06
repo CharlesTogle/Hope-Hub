@@ -19,7 +19,7 @@ export function isFinishedTestSession(session: PFTSessionData | null): boolean {
 
   return (
     finishedIndexes.length > 0 &&
-    finishedIndexes.includes(finishedIndexes.length - 1)
+    !finishedIndexes.includes(-1)
   );
 }
 
