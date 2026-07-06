@@ -75,7 +75,6 @@ export function PhysicalFitnessTestPage() {
         nextTestType === 'pre_physical_fitness_test' ? 'pre-test' : 'post-test'
       }`,
     );
-    clearSessionData();
   }, [clearSessionData, currentSessionData, isTeacher, navigate, pftStatus?.testType]);
 
   const handleTimeoutConfirm = () => {
