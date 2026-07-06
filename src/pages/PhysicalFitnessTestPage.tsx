@@ -56,7 +56,7 @@ export function PhysicalFitnessTestPage() {
     if (!currentSessionData.isPARQFinished) {
       navigate('/physical-fitness-test/parq');
     }
-  }, [currentSessionData.isPARQFinished, isTeacher, navigate, pftLoading, userId]);
+  }, [pftLoading, userId, isTeacher, navigate]);
 
   useEffect(() => {
     if (!isFinishedTestSession(currentSessionData)) {
