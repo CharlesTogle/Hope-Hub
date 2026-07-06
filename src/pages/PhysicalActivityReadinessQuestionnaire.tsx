@@ -299,9 +299,17 @@ export default function PhysicalActivityReadinessQuestionnaire() {
                     name="gender"
                     value={genderOption}
                     checked={physicalFitnessData.gender === genderOption}
-                    onChange={(event) =>
-                      handleInformationChange('gender', event.target.value as PFTGender)
-                    }
+                    onChange={(event) => {
+                      const newGender = event.target.value as PFTGender;
+                      const currentCat = physicalFitnessData.category;
+                      const catMatches = newGender === 'Male'
+                        ? currentCat === 'elementaryBoys' || currentCat === 'secondaryBoys'
+                        : currentCat === 'elementaryGirls' || currentCat === 'secondaryGirls';
+                      handleInformationChange('gender', newGender);
+                      if (!catMatches) {
+                        handleInformationChange('category', '' as PFTCategory);
+                      }
+                    }}
                   />
                   {genderOption}
                 </label>
@@ -320,10 +328,18 @@ export default function PhysicalActivityReadinessQuestionnaire() {
                 className="border-1 border-[#8B8989]! w-full font-content px-1 rounded-sm mt-0.5"
               >
                 <option disabled value="">--Select one option--</option>
-                <option value="elementaryBoys">Boy (Elementary 5-12 yrs old)</option>
-                <option value="elementaryGirls">Girl (Elementary 5-12 yrs old)</option>
-                <option value="secondaryBoys">Boy (High School 13-18 yrs old)</option>
-                <option value="secondaryGirls">Girl (High School 13-18 yrs old)</option>
+                {physicalFitnessData.gender === 'Male' && (
+                  <>
+                    <option value="elementaryBoys">Boy (Elementary 5-12 yrs old)</option>
+                    <option value="secondaryBoys">Boy (High School 13-18 yrs old)</option>
+                  </>
+                )}
+                {physicalFitnessData.gender === 'Female' && (
+                  <>
+                    <option value="elementaryGirls">Girl (Elementary 5-12 yrs old)</option>
+                    <option value="secondaryGirls">Girl (High School 13-18 yrs old)</option>
+                  </>
+                )}
               </select>
             </label>
           </div>
