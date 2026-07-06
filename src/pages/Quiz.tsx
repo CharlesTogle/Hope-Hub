@@ -13,6 +13,7 @@ import { useQuery } from '@tanstack/react-query';
 import { extractQuizState } from '@/lib/quiz-state';
 import { quizKeys } from '@/lib/query-keys';
 import { useQuizStore } from '@/store/quiz-store';
+import { logger } from '@/utilities/logger';
 import { useAuthStore } from '@/store/auth-store';
 import type { QuizState, QuizQuestion } from '@/types/quiz';
 
@@ -139,7 +140,8 @@ function StudentQuizView({ quizId }: { quizId?: string }) {
       let extractedState;
       try {
         extractedState = await extractQuizState(quizId, rawState);
-      } catch {
+      } catch (error) {
+        logger.error('Failed to extract quiz state', error);
         extractedState = null;
       }
       const initialQuizState: QuizState = extractedState ?? {
