@@ -401,7 +401,7 @@ export default function PhysicalFitnessTest({
         record: testResults.reps,
         timeStarted: nowTime,
         timeEnd: '',
-        classification: 'No data available',
+        classification: '',
       },
       finishedTestIndex: updatedFinishedTestIndex,
     };
@@ -410,7 +410,7 @@ export default function PhysicalFitnessTest({
 
     if (testIndex >= PhysicalFitnessTestList.length - 1) {
       scrollToTop();
-      navigate('/dashboard');
+      navigate('/physical-fitness-test/test/0');
       return;
     }
 
@@ -432,7 +432,7 @@ export default function PhysicalFitnessTest({
   useEffect(() => {
     if (!testDetails) {
       if (isTeacher) {
-        navigate('/dashboard');
+        navigate('/physical-fitness-test/test/0');
       }
       return;
     }
