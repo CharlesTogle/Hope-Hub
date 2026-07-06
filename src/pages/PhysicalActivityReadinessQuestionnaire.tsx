@@ -11,7 +11,7 @@ import { savePftSession } from '@/mutations/pft-mutations';
 import { fetchPftRecord } from '@/queries/pft-queries';
 import { usePhysicalFitnessStore } from '@/store/physical-fitness-store';
 import { useAuthStore } from '@/store/auth-store';
-import { numberOfTests } from '@/utilities/PhysicalFitnessData';
+import { numberOfTests, PhysicalFitnessData } from '@/utilities/PhysicalFitnessData';
 import type {
   PFTCategory,
   PFTGender,
@@ -207,10 +207,10 @@ export default function PhysicalActivityReadinessQuestionnaire() {
     let testType: 'pre_physical_fitness_test' | 'post_physical_fitness_test';
     let targetFinishedIndexes: number[];
 
-    if (!preFinishedIndexes.includes(preFinishedIndexes.length - 1)) {
+    if (preFinishedIndexes.length === 0 || preFinishedIndexes.includes(-1)) {
       testType = 'pre_physical_fitness_test';
       targetFinishedIndexes = preFinishedIndexes;
-    } else if (!postFinishedIndexes.includes(postFinishedIndexes.length - 1)) {
+    } else if (postFinishedIndexes.length === 0 || postFinishedIndexes.includes(-1)) {
       testType = 'post_physical_fitness_test';
       targetFinishedIndexes = postFinishedIndexes;
     } else {
@@ -222,7 +222,9 @@ export default function PhysicalActivityReadinessQuestionnaire() {
     }
 
     const updatedData = {
-      ...physicalFitnessData,
+      ...PhysicalFitnessData,
+      gender: physicalFitnessData.gender,
+      category: physicalFitnessData.category,
       isPARQFinished: true,
       ...(targetFinishedIndexes.length > 0 && {
         finishedTestIndex: targetFinishedIndexes,
