@@ -78,6 +78,7 @@ export async function fetchStudentQuizRows(
     .eq('user_id', userId);
 
   if (error) {
+    logger.error('fetchStudentQuizRows failed', error, { userId });
     return [];
   }
 
@@ -109,6 +110,7 @@ export async function fetchStudentClassCode(
     .single();
 
   if (error) {
+    logger.error('fetchStudentClassCode failed', error, { userId });
     return null;
   }
 
@@ -125,6 +127,7 @@ export async function fetchStudentPftStatus(
     .single();
 
   if (error) {
+    logger.error('fetchStudentPftStatus failed', error, { userId });
     return { preFinished: false, postFinished: false };
   }
 
@@ -169,6 +172,10 @@ export async function fetchTeacherClassOwnership(
     .eq('class_code', classCode)
     .single();
 
+  if (error) {
+    logger.error('fetchTeacherClassOwnership failed', error, { teacherId, classCode });
+  }
+
   return !error && !!data;
 }
 
@@ -176,6 +183,7 @@ export async function fetchQuizNumbers(): Promise<number[]> {
   const { data, error } = await supabase.from('quiz').select('quiz_number');
 
   if (error) {
+    logger.error('fetchQuizNumbers failed', error);
     return [];
   }
 

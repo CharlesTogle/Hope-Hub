@@ -13,6 +13,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { classKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { useUIStore } from '@/store/ui-store';
+import { toast } from 'sonner';
 import { removeTeacherClassCode } from '@/mutations/class-mutations';
 import { fetchTeacherClassCodes } from '@/queries/dashboard-queries';
 import type { ClassCode as ClassCodeData } from '@/types/student';
@@ -55,6 +56,7 @@ export default function TeacherDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: classKeys.codes(userID ?? '') });
     },
+    onError: () => toast.error('Failed to remove class. Please try again.'),
   });
 
   const handleAddClass = () => setShowAddClassModal(true);
