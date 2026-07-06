@@ -110,8 +110,15 @@ function physicalFitnessTestReducer(
 }
 
 function parseTime(timeString: string): number {
-  const [hours, minutes] = timeString.split(':').map(Number);
-  return hours * 60 + minutes;
+  const trimmed = timeString.trim();
+  const isPM = /pm/i.test(trimmed);
+  const isAM = /am/i.test(trimmed);
+  const clean = trimmed.replace(/\s*[ap]m\s*/i, '');
+  const [hours, minutes] = clean.split(':').map(Number);
+  let h = hours;
+  if (isPM && h < 12) h += 12;
+  if (isAM && h === 12) h = 0;
+  return h * 60 + (minutes ?? 0);
 }
 
 function getClassificationEntries(
@@ -319,11 +326,13 @@ export default function PhysicalFitnessTest({
 
     const startTimeInMinutes = parseTime(testResults.timeStarted);
     const endTimeInMinutes = parseTime(testResults.timeEnded);
-    const isStartTimeAfterEndTime = testResults.timeStarted > testResults.timeEnded;
+    const currentTimeInMinutes = parseTime(nowTime);
+    const isStartTimeAfterEndTime = startTimeInMinutes > endTimeInMinutes;
+    const isEndTimeAfterCurrentTime = endTimeInMinutes > currentTimeInMinutes;
     const isTimeThresholdReached = endTimeInMinutes - startTimeInMinutes <= 2;
     const isTimeEndValid = endTimeInMinutes - startTimeInMinutes > 20;
 
-    if (isStartTimeAfterEndTime) {
+    if (isStartTimeAfterEndTime || isEndTimeAfterCurrentTime) {
       dispatch({
         type: 'show-alert',
         message: "Please input a valid time for 'Time End'",
