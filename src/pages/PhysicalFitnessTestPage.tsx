@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import PhysicalFitnessTest from '@/components/physical-fitness-test/PhysicalFitnessTest';
@@ -37,13 +37,13 @@ export function PhysicalFitnessTestPage() {
     (!finishedTestIndex.includes(currentTestIndex - 1) ||
       finishedTestIndex.length <= currentTestIndex);
 
-  const { data: pftRecord, isFetching: pftFetching } = useQuery({
+  const { data: pftRecord, isFetching: pftFetching, isLoading: pftLoading } = useQuery({
     queryKey: pftKeys.session(userId ?? ''),
     queryFn: () => fetchPftRecord(userId ?? ''),
     enabled: !!userId,
   });
 
-  const pftStatus = pftRecord ? derivePftStatus(pftRecord) : null;
+  const pftStatus = useMemo(() => pftRecord ? derivePftStatus(pftRecord) : null, [pftRecord]);
 
   useEffect(() => {
     if (pftFetching || !userId || isTeacher) {
@@ -84,7 +84,7 @@ export function PhysicalFitnessTestPage() {
     navigate('/physical-fitness-test/parq');
   };
 
-  if (pftFetching || !userId) {
+  if (pftLoading || !userId) {
     return <Loading />;
   }
 
