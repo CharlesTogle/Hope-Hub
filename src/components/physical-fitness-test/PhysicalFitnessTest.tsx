@@ -370,7 +370,7 @@ export default function PhysicalFitnessTest({
 
     await persistSession(updatedPhysicalFitnessData);
 
-    if (physicalFitnessData.finishedTestIndex.length >= testIndex) {
+    if (testIndex < PhysicalFitnessTestList.length - 1) {
       resetForNextStep(nowTime);
     }
   }, [
