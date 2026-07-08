@@ -17,9 +17,3 @@ export function corsHeadersFor(request: Request): Record<string, string> {
     'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
   };
 }
-
-export const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://hope-hub-fitness.vercel.app',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-};
