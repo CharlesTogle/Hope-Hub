@@ -3,7 +3,7 @@
 // This enables autocomplete, go to definition, etc.
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { corsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor } from "../_shared/cors.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.43.4";
 import { Redis } from "https://deno.land/x/upstash_redis@v1.19.3/mod.ts";
 import { Ratelimit } from "https://cdn.skypack.dev/@upstash/ratelimit@latest";
@@ -19,7 +19,7 @@ Deno.serve(async (req)=>{
     if (req.method === "OPTIONS") {
       return new Response("ok", {
         headers: {
-          ...corsHeaders,
+          ...corsHeadersFor(req),
           "Content-Type": "application/json"
         }
       });
@@ -30,7 +30,7 @@ Deno.serve(async (req)=>{
       }), {
         status: 405,
         headers: {
-          ...corsHeaders,
+          ...corsHeadersFor(req),
           "Content-Type": "application/json"
         }
       });
@@ -54,7 +54,7 @@ Deno.serve(async (req)=>{
       }), {
         status: 429,
         headers: {
-          ...corsHeaders,
+          ...corsHeadersFor(req),
           "Content-Type": "application/json"
         }
       });
@@ -74,7 +74,18 @@ Deno.serve(async (req)=>{
       }), {
         status: 400,
         headers: {
-          ...corsHeaders,
+          ...corsHeadersFor(req),
+          "Content-Type": "application/json"
+        }
+      });
+    }
+    if (trimmedPassword.length < 8) {
+      return new Response(JSON.stringify({
+        message: "Password must be at least 8 characters"
+      }), {
+        status: 400,
+        headers: {
+          ...corsHeadersFor(req),
           "Content-Type": "application/json"
         }
       });

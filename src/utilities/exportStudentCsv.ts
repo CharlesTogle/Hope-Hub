@@ -42,10 +42,11 @@ function formatStepTest(
 
 function escapeCsvField(value: string | number): string {
   const str = String(value);
-  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-    return `"${str.replace(/"/g, '""')}"`;
+  const neutralized = /^[=+\-@\t\r]/.test(str) ? `'${str}` : str;
+  if (neutralized.includes(',') || neutralized.includes('"') || neutralized.includes('\n')) {
+    return `"${neutralized.replace(/"/g, '""')}"`;
   }
-  return str;
+  return neutralized;
 }
 
 export function generateStudentCsv(
