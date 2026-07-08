@@ -1,6 +1,6 @@
 import supabase from '@/client/supabase';
 import type { QuizState, QuizProgressRow, QuizWithProgress } from '@/types/quiz';
-import { getCurrentUser, getUserRanking } from '@/queries/quiz-queries';
+import { getCurrentUser, getUserRankings } from '@/queries/quiz-queries';
 
 function normalizeQuizRunStatus(
   status: QuizProgressRow['status'] | null | undefined,
@@ -58,18 +58,13 @@ export async function extractQuizDetails(quizData: QuizWithProgress[]): Promise<
 
   if (!Array.isArray(quizData) || quizData.length === 0) return quizData;
 
-  const rankingEntries = await Promise.all(
-    quizData
-      .filter((q) => (q.quiz_progress as QuizProgressRow[] | undefined)?.[0]?.date_taken)
-      .map(async (q) => {
-        try {
-          return [q.id, String(await getUserRanking(q.id) ?? '')] as const;
-        } catch {
-          return [q.id, ''] as const;
-        }
-      }),
-  );
-  const rankingMap = new Map(rankingEntries);
+  const completedQuizIds = quizData
+    .filter((q) => (q.quiz_progress as QuizProgressRow[] | undefined)?.[0]?.date_taken)
+    .map((q) => q.id);
+
+  const rankingMap = completedQuizIds.length > 0
+    ? await getUserRankings(completedQuizIds)
+    : new Map<number | string, string>();
 
   for (const quiz of quizData) {
     const progress: QuizProgressRow | null =

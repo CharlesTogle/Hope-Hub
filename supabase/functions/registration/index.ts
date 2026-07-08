@@ -35,6 +35,10 @@ Deno.serve(async (req)=>{
         }
       });
     }
+    const { userData } = await req.json();
+    const { email, password, name, userType, lectureProgress } = userData;
+    const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+    const identifier = `registration:${ip}`;
     const redis = new Redis({
       url: Deno.env.get("UPSTASH_REDIS_REST_URL"),
       token: Deno.env.get("UPSTASH_REDIS_REST_TOKEN")
@@ -43,7 +47,6 @@ Deno.serve(async (req)=>{
       redis: redis,
       limiter: Ratelimit.slidingWindow(10, "10 s")
     });
-    const identifier = "api";
     const { success } = await ratelimit.limit(identifier);
     if (!success) {
       return new Response(JSON.stringify({
@@ -56,8 +59,6 @@ Deno.serve(async (req)=>{
         }
       });
     }
-    const { userData } = await req.json();
-    const { email, password, name, userType, lectureProgress } = userData;
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
     const trimmedName = name.trim();
@@ -104,9 +105,9 @@ Deno.serve(async (req)=>{
       status: 200
     });
   } catch (err) {
-    const errorMessage = err && typeof err === "object" && "message" in err ? err.message : String(err);
+    console.error("registration error:", err);
     return new Response(JSON.stringify({
-      message: errorMessage
+      message: "Registration failed. Please try again."
     }), {
       headers: {
         ...corsHeaders,

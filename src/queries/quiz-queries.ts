@@ -161,6 +161,31 @@ export async function getUserRanking(quizId: number | string): Promise<number | 
     .find((item) => item.user_id === user.id)?.rank;
 }
 
+export async function getUserRankings(quizIds: (number | string)[]): Promise<Map<number | string, string>> {
+  const user = await getCurrentUser();
+  const { data, error } = await supabase
+    .from('quiz_progress')
+    .select('quiz_id, user_id, points')
+    .in('quiz_id', quizIds)
+    .eq('status', 'Done')
+    .order('points', { ascending: false });
+  if (error) throw error;
+
+  const byQuiz = new Map<number | string, Array<{ user_id: string }>>();
+  for (const row of (data ?? [])) {
+    const list = byQuiz.get(row.quiz_id) ?? [];
+    list.push(row);
+    byQuiz.set(row.quiz_id, list);
+  }
+
+  const result = new Map<number | string, string>();
+  for (const [quizId, rows] of byQuiz) {
+    const userIndex = rows.findIndex((r) => r.user_id === user.id);
+    if (userIndex !== -1) result.set(quizId, String(userIndex + 1));
+  }
+  return result;
+}
+
 export async function fetchLeaderboard(
   quizId: number | string,
 ): Promise<LeaderboardEntry[]> {

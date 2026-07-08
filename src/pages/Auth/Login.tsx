@@ -12,7 +12,6 @@ import { authKeys } from '@/lib/query-keys';
 import { fetchAuthenticatedProfile } from '@/queries/auth-queries';
 import { useAuthStore } from '@/store/auth-store';
 import { useNavigate } from 'react-router-dom';
-import useRateLimiter from '@/hooks/useRateLimiter';
 import { logger } from '@/utilities/logger';
 
 interface LoginState {
@@ -91,7 +90,6 @@ export default function Login() {
   const queryClient = useQueryClient();
   const setAuthState = useAuthStore((store) => store.setAuthState);
 
-  const isRateLimited = useRateLimiter({ minIntervalMs: 5000, maxAttempts: 7 });
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const errorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -101,40 +99,6 @@ export default function Login() {
     dispatch({ type: 'clear-messages' });
     dispatch({ type: 'set-submitting', value: true });
 
-    const rateLimitResult = isRateLimited();
-    const rateLimited = rateLimitResult !== false ? rateLimitResult.type : null;
-
-    if (rateLimited === 'exceeded') {
-      dispatch({
-        type: 'set-error',
-        value:
-        'Too many Login attempts. Please wait 5 minutes or try again in a few seconds.',
-      });
-      dispatch({ type: 'set-submitting', value: false });
-      clearTimeout(errorTimeoutRef.current ?? undefined);
-      errorTimeoutRef.current = setTimeout(
-        () => dispatch({ type: 'set-error', value: '' }),
-        300000,
-      );
-      return;
-    }
-
-    if (rateLimited === 'too-fast') {
-      dispatch({
-        type: 'set-error',
-        value:
-        'You are attempting too fast. Please wait for 5 seconds and try again',
-      });
-      dispatch({ type: 'set-submitting', value: false });
-      clearTimeout(errorTimeoutRef.current ?? undefined);
-      errorTimeoutRef.current = setTimeout(
-        () => dispatch({ type: 'set-error', value: '' }),
-        5000,
-      );
-      return;
-    }
-
-    dispatch({ type: 'set-debounced', value: true });
     clearTimeout(debounceRef.current ?? undefined);
     debounceRef.current = setTimeout(
       () => dispatch({ type: 'set-debounced', value: false }),
@@ -161,7 +125,7 @@ export default function Login() {
       const authSession = await fetchAuthenticatedProfile();
 
       if (!authSession.userId || !authSession.profile) {
-        logger.error('Login succeeded but profile could not be loaded', 'missing profile', { email: state.email });
+        logger.error('Login succeeded but profile could not be loaded', new Error('missing profile'));
         await supabase.auth.signOut();
         queryClient.setQueryData(authKeys.current(), {
           userId: null,

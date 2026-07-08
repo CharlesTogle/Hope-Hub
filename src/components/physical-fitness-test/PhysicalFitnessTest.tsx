@@ -6,6 +6,8 @@ import SimpleTimer from '@/components/utilities/SimpleTimer';
 import ResultSection from './ResultSection';
 import TipsAndInterpretation from './TipsAndInterpretation';
 import { useMobile } from '@/hooks/useMobile';
+import { useQueryClient } from '@tanstack/react-query';
+import { pftKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { usePhysicalFitnessStore } from '@/store/physical-fitness-store';
 import { PFT_TIMEOUT_SECONDS } from '@/lib/pft-session';
@@ -185,6 +187,7 @@ export default function PhysicalFitnessTest({
   const physicalFitnessData = usePhysicalFitnessStore((state) => state.sessionData);
   const setSessionData = usePhysicalFitnessStore((state) => state.setSessionData);
   const userId = useAuthStore((state) => state.profile?.uuid ?? null);
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const isTeacher = userType === 'teacher';
   const isMobile = useMobile();
@@ -283,8 +286,9 @@ export default function PhysicalFitnessTest({
 
       setSessionData(updatedData);
       await savePftSession(userId, testType, updatedData);
+      queryClient.invalidateQueries({ queryKey: pftKeys.session(userId) });
     },
-    [setSessionData, testType, userId],
+    [setSessionData, testType, userId, queryClient],
   );
 
   const resetForNextStep = useCallback(
@@ -326,7 +330,6 @@ export default function PhysicalFitnessTest({
 
     const startTimeInMinutes = parseTime(testResults.timeStarted);
     const endTimeInMinutes = parseTime(testResults.timeEnded);
-    console.log('PFT time:', { timeStarted: testResults.timeStarted, timeEnded: testResults.timeEnded, nowTime, startTimeInMinutes, endTimeInMinutes, duration: endTimeInMinutes - startTimeInMinutes });
     const isStartTimeAfterEndTime = startTimeInMinutes > endTimeInMinutes;
     const isTimeThresholdReached = endTimeInMinutes - startTimeInMinutes <= 2;
     const isTimeEndValid = endTimeInMinutes - startTimeInMinutes > 20;

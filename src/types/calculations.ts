@@ -92,9 +92,3 @@ export interface BodyFatParams {
   waistUnit: MeasurementUnit;
   hipsUnit?: MeasurementUnit;
 }
-
-export interface ExcelWorkbookData {
-  data: (string | number)[][];
-  headers: string[];
-  classCode: string;
-}

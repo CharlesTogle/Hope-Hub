@@ -35,6 +35,9 @@ Deno.serve(async (req)=>{
         }
       });
     }
+    const { email, password } = await req.json();
+    const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
+    const identifier = `login:${ip}:${(email ?? "").toLowerCase()}`;
     const redis = new Redis({
       url: Deno.env.get("UPSTASH_REDIS_REST_URL"),
       token: Deno.env.get("UPSTASH_REDIS_REST_TOKEN")
@@ -43,7 +46,6 @@ Deno.serve(async (req)=>{
       redis: redis,
       limiter: Ratelimit.slidingWindow(10, "10 s")
     });
-    const identifier = "api";
     const { success } = await ratelimit.limit(identifier);
     if (!success) {
       return new Response(JSON.stringify({
@@ -56,7 +58,6 @@ Deno.serve(async (req)=>{
         }
       });
     }
-    const { email, password } = await req.json();
     if (email === "" || password === "") {
       return new Response(JSON.stringify({
         message: "Please fill up all fields"
@@ -85,8 +86,9 @@ Deno.serve(async (req)=>{
       status: 200
     });
   } catch (err) {
+    console.error("login error:", err);
     return new Response(JSON.stringify({
-      message: String(err)
+      message: "Login failed. Please try again."
     }), {
       headers: {
         ...corsHeaders,
