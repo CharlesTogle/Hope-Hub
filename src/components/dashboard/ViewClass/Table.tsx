@@ -2,10 +2,10 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Download } from 'lucide-react';
 import {
-  generateStudentExcel,
-  downloadExcel,
-  generateFilename,
-} from '@/utilities/exportStudentExcel';
+  generateStudentCsv,
+  downloadCsv,
+  generateExportFilename,
+} from '@/utilities/exportStudentCsv';
 import { useState } from 'react';
 import type { CleanedStudent } from '@/types/student';
 import { logger } from '@/utilities/logger';
@@ -37,22 +37,22 @@ export default function Table({ headings, content, classCode }: TableProps) {
       const lessonCount = headings.filter((heading) => heading.startsWith('Lesson')).length;
       const quizCount = headings.filter((heading) => heading.startsWith('Quiz')).length;
 
-      const excelData = await generateStudentExcel(
+      const csvData = await generateStudentCsv(
         [student],
         null,
         lessonCount,
         quizCount,
       );
-      if (!excelData) {
+      if (!csvData) {
         return;
       }
-      const filename = generateFilename(
+      const filename = generateExportFilename(
         'student',
         student.studentName.replace(/\s+/g, '-'),
       );
-      downloadExcel(excelData, filename);
+      downloadCsv(csvData, filename);
     } catch (error) {
-      logger.error('Error exporting student Excel', error);
+      logger.error('Error exporting student CSV', error);
       toast.error('Failed to export student data. Please try again.');
     } finally {
       setExportingStudent(null);

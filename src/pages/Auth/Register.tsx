@@ -93,6 +93,12 @@ export default function Register() {
       return;
     }
 
+    if (state.password.length < 8) {
+      dispatch({ type: 'set-error', value: 'Password must be at least 8 characters' });
+      dispatch({ type: 'set-loading', value: false });
+      return;
+    }
+
     const trimmedEmail = state.email.trim();
     const trimmedPassword = state.password.trim();
     const trimmedConfirmPassword = state.confirmPassword.trim();

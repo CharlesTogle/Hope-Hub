@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeading from '@/components/PageHeading';
 import { AlertMessage } from '@/components/utilities/AlertMessage';
 import Footer from '@/components/Footer';
@@ -81,6 +81,7 @@ export default function PhysicalActivityReadinessQuestionnaire() {
   const updateField = usePhysicalFitnessStore((state) => state.updateField);
   const [state, dispatch] = useReducer(parqReducer, undefined, createInitialParqState);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { profile } = useAuthStore();
   const userId = profile?.uuid ?? null;
   const userType = profile?.user_type ?? 'student';
@@ -131,6 +132,7 @@ export default function PhysicalActivityReadinessQuestionnaire() {
 
     try {
       await savePftSession(userId, 'pre_physical_fitness_test', updatedData);
+      queryClient.invalidateQueries({ queryKey: pftKeys.session(userId) });
     } catch {
       dispatch({
         type: 'show-error',
@@ -235,6 +237,7 @@ export default function PhysicalActivityReadinessQuestionnaire() {
 
     try {
       await savePftSession(userId, testType, updatedData);
+      queryClient.invalidateQueries({ queryKey: pftKeys.session(userId) });
     } catch {
       dispatch({
         type: 'show-error',

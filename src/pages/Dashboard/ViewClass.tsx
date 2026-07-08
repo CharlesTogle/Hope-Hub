@@ -8,10 +8,10 @@ import Loading from '@/components/Loading';
 import { toast } from 'sonner';
 import { logger } from '@/utilities/logger';
 import {
-  generateStudentExcel,
-  downloadExcel,
-  generateFilename,
-} from '@/utilities/exportStudentExcel';
+  generateStudentCsv,
+  downloadCsv,
+  generateExportFilename,
+} from '@/utilities/exportStudentCsv';
 import { useQuery } from '@tanstack/react-query';
 import { classKeys, quizKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
@@ -120,20 +120,20 @@ export default function ViewClass () {
   const handleExportClass = async () => {
     setIsExporting(true);
     try {
-      const excelData = await generateStudentExcel(
+      const csvData = await generateStudentCsv(
         defaultStudentData,
         classCode ?? null,
         lecturesData.length,
         quizData.length,
       );
-      if (!excelData) {
+      if (!csvData) {
         return;
       }
-      const filename = generateFilename('class', classCode ?? '');
-      downloadExcel(excelData, filename);
+      const filename = generateExportFilename('class', classCode ?? '');
+      downloadCsv(csvData, filename);
     } catch (error) {
-      logger.error('Error exporting Excel', error);
-      toast.error('Failed to export Excel file. Please try again.');
+      logger.error('Error exporting CSV', error);
+      toast.error('Failed to export CSV file. Please try again.');
     } finally {
       setIsExporting(false);
     }
