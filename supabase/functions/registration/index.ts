@@ -110,7 +110,7 @@ Deno.serve(async (req)=>{
       data
     }), {
       headers: {
-        ...corsHeaders,
+        ...corsHeadersFor(req),
         "Content-Type": "application/json"
       },
       status: 200
@@ -121,7 +121,7 @@ Deno.serve(async (req)=>{
       message: "Registration failed. Please try again."
     }), {
       headers: {
-        ...corsHeaders,
+        ...corsHeadersFor(req),
         "Content-Type": "application/json"
       },
       status: 500
