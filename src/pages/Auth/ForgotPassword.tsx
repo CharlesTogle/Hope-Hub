@@ -8,6 +8,8 @@ import { useReducer } from 'react';
 import supabase from '@/client/supabase';
 import { useNavigate } from 'react-router-dom';
 import useRateLimiter from '@/hooks/useRateLimiter';
+import { logger } from '@/utilities/logger';
+import { getUserFacingError } from '@/utilities/user-facing-errors';
 
 interface ForgotPasswordState {
   email: string;
@@ -91,7 +93,11 @@ export default function ForgotPassword() {
     dispatch({ type: 'set-loading', value: false });
 
     if (error) {
-      dispatch({ type: 'set-error', value: error.message });
+      logger.error('Password reset failed', error);
+      dispatch({
+        type: 'set-error',
+        value: getUserFacingError(error, 'password-reset'),
+      });
     } else {
       dispatch({
         type: 'set-success',

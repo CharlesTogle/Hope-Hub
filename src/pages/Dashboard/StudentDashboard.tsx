@@ -25,6 +25,7 @@ import {
   fetchStudentQuizRows,
 } from '@/queries/dashboard-queries';
 import type { DashboardQuizRow } from '@/types/student';
+import { getUserFacingError } from '@/utilities/user-facing-errors';
 
 export default function StudentDashboard() {
   const { profile, logout } = useAuthStore();
@@ -99,8 +100,7 @@ export default function StudentDashboard() {
       setIsJoiningClass(false);
     },
     onError: (error) => {
-      const message = error instanceof Error ? error.message : 'Failed to join class.';
-      toast.error(message);
+      toast.error(getUserFacingError(error, 'join-class'));
     },
   });
 
@@ -110,7 +110,7 @@ export default function StudentDashboard() {
       setConfirmingLeave(false);
       queryClient.invalidateQueries({ queryKey: classKeys.studentCode(userID ?? '') });
     },
-    onError: () => toast.error('Failed to leave class. Please try again.'),
+    onError: (error) => toast.error(getUserFacingError(error, 'leave-class')),
   });
 
   const handleLeaveClass = () => {
@@ -121,11 +121,16 @@ export default function StudentDashboard() {
   const handleJoinClass = () => joinMutation.mutate(tempClassCode);
 
   const handleProfileChange = async (file: File, fileName = 'profilePicture') => {
-    await onProfileChangeUtil(userID, file, fileName);
+    const result = await onProfileChangeUtil(userID, file, fileName);
+    if (result.success) toast.success('Your profile picture was updated.');
+    else toast.error(result.error);
   };
 
   const handleLogout = async () => {
-    await logout();
+    const result = await logout();
+    if (!result.remoteSignOutSucceeded) {
+      toast.warning("You were signed out on this device, but we couldn't confirm it with the server.");
+    }
     navigate('/auth/login', { replace: true });
   };
 

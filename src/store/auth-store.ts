@@ -11,7 +11,7 @@ interface AuthState {
   setAuthState: (auth: { userId: string | null; profile: Profile | null }) => void;
   setIsLoading: (isLoading: boolean) => void;
   clearAuthState: () => void;
-  logout: () => Promise<void>;
+  logout: () => Promise<{ remoteSignOutSucceeded: boolean }>;
 }
 
 const initialState = {
@@ -41,13 +41,21 @@ export const useAuthStore = create<AuthState>((set) => ({
   clearAuthState: () => set(loggedOutState),
 
   logout: async () => {
+    let remoteSignOutSucceeded = true;
+
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        remoteSignOutSucceeded = false;
+        logger.error('Logout failed', error);
+      }
     } catch (error) {
+      remoteSignOutSucceeded = false;
       logger.error('Logout failed', error);
     }
     localStorage.removeItem('lectureProgress');
     localStorage.removeItem('physicalFitnessData');
     set(loggedOutState);
+    return { remoteSignOutSucceeded };
   },
 }));

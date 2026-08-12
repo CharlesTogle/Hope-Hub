@@ -1,7 +1,7 @@
 import PageHeading from '@/components/PageHeading';
 import ErrorMessage from '@/components/utilities/ErrorMessage';
 import { Fragment } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import Footer from '@/components/Footer';
 import Loading from '@/components/Loading';
 import { getBMI } from '@/services/Calculations';
@@ -18,6 +18,7 @@ import { fetchTeacherClassOwnership } from '@/queries/dashboard-queries';
 
 export function PhysicalFitnessTestSummary() {
   const { testType, classCode, studentId } = useParams();
+  const navigate = useNavigate();
   const { profile } = useAuthStore();
   const userId = profile?.uuid ?? null;
   const isTeacher = profile?.user_type === 'teacher';
@@ -26,7 +27,12 @@ export function PhysicalFitnessTestSummary() {
     testType === 'pre-test' || testType === 'post-test';
   const targetUserId = isTeacherView ? studentId ?? null : userId;
 
-  const { data: hasClassOwnership = false, isLoading: ownershipLoading } =
+  const {
+    data: hasClassOwnership = false,
+    isLoading: ownershipLoading,
+    isError: ownershipError,
+    refetch: refetchOwnership,
+  } =
     useQuery({
       queryKey: ['class', 'ownership', userId ?? '', classCode ?? ''],
       queryFn: () =>
@@ -40,7 +46,12 @@ export function PhysicalFitnessTestSummary() {
     !!targetUserId &&
     (!isTeacherView || (isTeacher && hasClassOwnership));
 
-  const { data: summaryRow, isLoading, isError } = useQuery({
+  const {
+    data: summaryRow,
+    isLoading,
+    isError,
+    refetch: refetchSummary,
+  } = useQuery({
     queryKey: pftKeys.summary(
       isTeacherView ? classCode ?? '' : 'self',
       targetUserId ?? '',
@@ -68,19 +79,52 @@ export function PhysicalFitnessTestSummary() {
     !!finishedTests && finishedTests.includes(finishedTests.length - 1);
 
   if (!isValidTestType) {
-    return <ErrorMessage text="Error 400" subText="Bad Request" />;
+    return (
+      <ErrorMessage
+        title='We could not find that test summary'
+        description='The requested test type is not available.'
+        onBack={() => navigate('/dashboard')}
+      />
+    );
   }
 
   if (isTeacherView && !isTeacher) {
-    return <ErrorMessage text="Error 403" subText="Forbidden" />;
+    return (
+      <ErrorMessage
+        title='You do not have access to this summary'
+        description='Return to the dashboard to continue.'
+        onBack={() => navigate('/dashboard')}
+      />
+    );
   }
 
   if (isLoading || ownershipLoading || !userId) return <Loading />;
+  if (ownershipError || isError) {
+    return (
+      <ErrorMessage
+        title="We couldn't load your test summary"
+        description='Check your connection and try again.'
+        onRetry={() => void (ownershipError ? refetchOwnership() : refetchSummary())}
+      />
+    );
+  }
   if (isTeacherView && !hasClassOwnership) {
-    return <ErrorMessage text="Error 404" subText="Class Not Found" />;
+    return (
+      <ErrorMessage
+        title='Class not found'
+        description='We could not find that class or you may not have access to it.'
+        onBack={() => navigate('/dashboard')}
+      />
+    );
   }
   if (isError || !dataResults || !isCompleted) {
-    return <ErrorMessage text="Error 400" subText="Bad Request" />;
+    return (
+      <ErrorMessage
+        title='Your test summary is not ready'
+        description='Complete the test before viewing its results.'
+        onBack={() => navigate('/dashboard')}
+      />
+    );
   }
 
   return (

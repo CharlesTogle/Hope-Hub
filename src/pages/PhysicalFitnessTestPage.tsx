@@ -89,7 +89,13 @@ export function PhysicalFitnessTestPage() {
   }
 
   if (isBadRequest) {
-    return <ErrorMessage text="Error 400" subText="Bad Request" />;
+    return (
+      <ErrorMessage
+        title='This test step is not available'
+        description='Complete the previous step before continuing.'
+        onBack={() => navigate('/physical-fitness-test/parq')}
+      />
+    );
   }
 
   if (isTimeout) {
@@ -105,8 +111,9 @@ export function PhysicalFitnessTestPage() {
   if (pftStatus?.isTaken) {
     return (
       <ErrorMessage
-        text="You have already been taken the test"
-        subText="go to dashboard to view results"
+        title='You have already completed this test'
+        description='View your results from the dashboard.'
+        onBack={() => navigate('/dashboard')}
       />
     );
   }

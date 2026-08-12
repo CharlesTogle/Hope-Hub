@@ -11,7 +11,7 @@ export async function getStudentsByClassCode(
 
   if (error) {
     logger.error('getStudentsByClassCode failed', error, { classCode });
-    return [];
+    throw error;
   }
   return data ?? [];
 }

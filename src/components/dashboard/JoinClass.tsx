@@ -7,6 +7,7 @@ import {
   doesTeacherClassCodeExist,
   isValidClassCode,
 } from '@/mutations/class-mutations';
+import { getUserFacingError } from '@/utilities/user-facing-errors';
 
 interface JoinClassProps {
   tempClassCode: string;
@@ -40,8 +41,8 @@ export default function JoinClass({
 
       setError('');
       handleJoinClass();
-    } catch {
-      setError('Error checking class code. Please try again.');
+    } catch (error) {
+      setError(getUserFacingError(error, 'join-class'));
     }
   };
 

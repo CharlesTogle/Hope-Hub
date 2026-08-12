@@ -12,6 +12,8 @@ import Content from '@/components/health-calculators/Content';
 import RowContainer from '@/components/health-calculators/RowContainer';
 import Citation from '@/components/Citations';
 import type { Gender, HeightUnit, IBWResult } from '@/types/calculations';
+import { logger } from '@/utilities/logger';
+import { getUserFacingError } from '@/utilities/user-facing-errors';
 
 export default function IBWCalculator () {
   const [gender, setGender] = useState<Gender | ''>('male');
@@ -56,7 +58,8 @@ export default function IBWCalculator () {
         }, 100);
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Calculation failed');
+      logger.error('IBW calculation failed', error);
+      toast.error(getUserFacingError(error, 'calculation'));
     }
   };
 

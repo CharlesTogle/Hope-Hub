@@ -22,6 +22,8 @@ import type {
   HeightUnit,
   WeightUnit,
 } from '@/types/calculations';
+import { logger } from '@/utilities/logger';
+import { getUserFacingError } from '@/utilities/user-facing-errors';
 
 interface BMRState {
   gender: Gender | '';
@@ -205,7 +207,8 @@ export default function BMRCalculator() {
         state.weightUnit,
       );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Calculation failed');
+      logger.error('BMR calculation failed', error);
+      toast.error(getUserFacingError(error, 'calculation'));
       return;
     }
 
@@ -215,7 +218,8 @@ export default function BMRCalculator() {
     try {
       calorieGoals = getCalorieGoals(BMR, state.activityLevel);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Calculation failed');
+      logger.error('Calorie goals calculation failed', error);
+      toast.error(getUserFacingError(error, 'calculation'));
       return;
     }
 

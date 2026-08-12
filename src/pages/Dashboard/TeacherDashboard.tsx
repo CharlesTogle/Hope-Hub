@@ -42,7 +42,9 @@ export default function TeacherDashboard() {
   const queryClient = useQueryClient();
 
   const handleProfileChange = async (file: File, fileName = 'profilePicture') => {
-    await onProfileChangeUtil(userID, file, fileName);
+    const result = await onProfileChangeUtil(userID, file, fileName);
+    if (result.success) toast.success('Your profile picture was updated.');
+    else toast.error(result.error);
   };
 
   const { data: classCodes = [], isLoading } = useQuery<ClassCodeData[]>({
@@ -76,7 +78,10 @@ export default function TeacherDashboard() {
   };
 
   const handleLogout = async () => {
-    await logout();
+    const result = await logout();
+    if (!result.remoteSignOutSucceeded) {
+      toast.warning("You were signed out on this device, but we couldn't confirm it with the server.");
+    }
     navigate('/', { replace: true });
   };
 

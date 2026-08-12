@@ -12,6 +12,8 @@ import { useEffect } from 'react';
 import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
 import type { QuizStatus, QuizWithProgress } from '@/types/quiz';
+import ErrorMessage from '@/components/utilities/ErrorMessage';
+import { getUserFacingError } from '@/utilities/user-facing-errors';
 
 type DashboardFilter = 'All' | Extract<QuizStatus, 'Done' | 'Pending' | 'Locked'>;
 type QuizDisplayStatus = Extract<QuizStatus, 'Done' | 'Pending' | 'Locked'> | 'Demo';
@@ -29,7 +31,7 @@ export default function QuizDashboard() {
 
   const userType = profile?.user_type ?? 'student';
 
-  const { data: quizzes = [], isLoading } = useQuery({
+  const { data: quizzes = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: quizKeys.list(),
     queryFn: async () => {
       const data = await fetchQuizzes();
@@ -38,6 +40,20 @@ export default function QuizDashboard() {
     enabled: !!profile,
     staleTime: 1000 * 30,
   });
+
+  if (isError) {
+    return (
+      <div className='h-screen overflow-y-auto'>
+        <PageHeading text='Quizzes' className='bg-background z-2' />
+        <ErrorMessage
+          title="We couldn't load your quizzes"
+          description={getUserFacingError(error, 'load')}
+          onRetry={() => void refetch()}
+        />
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen overflow-y-auto">
@@ -48,6 +64,7 @@ export default function QuizDashboard() {
         </div>
       ) : (
         <>
+          <>
           <div
             id="header"
             className="flex flex-wrap lg:justify-between md:justify-between justify-start sticky top-0 pt-5 lg:pt-5 md:pt-0 pb-1 z-10 bg-background lg:w-full lg:px-20 md:px-20 px-7"
@@ -77,6 +94,7 @@ export default function QuizDashboard() {
               </ul>
             ) : null}
           </div>
+          </>
           <div
             id="quizzes"
             className="flex flex-col items-center justify-center w-5/6 mx-auto mb-8 relative"
