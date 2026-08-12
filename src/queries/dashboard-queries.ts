@@ -13,7 +13,7 @@ export async function fetchLectureProgressSummary(
 
   if (error) {
     logger.error('fetchLectureProgressSummary failed', error, { userId });
-    return { completed: 0, incomplete: 0, pending: 0, total: 0 };
+    throw error;
   }
 
   const lectures = data.lecture_progress || [];
@@ -31,10 +31,14 @@ export async function fetchLectureProgressSummary(
 }
 
 export async function fetchQuizCount(): Promise<number> {
-  const { count } = await supabase
+  const { count, error } = await supabase
     .from('quiz')
     .select('*', { count: 'exact', head: true });
 
+  if (error) {
+    logger.error('fetchQuizCount failed', error);
+    throw error;
+  }
   return count ?? 0;
 }
 
@@ -49,7 +53,7 @@ export async function fetchStudentQuizProgressSummary(
 
   if (error) {
     logger.error('fetchStudentQuizProgressSummary failed', error, { userId });
-    return { completed: 0, incomplete: 0, pending: 0, total: quizCount };
+    throw error;
   }
 
   let completed = 0;
@@ -79,7 +83,7 @@ export async function fetchStudentQuizRows(
 
   if (error) {
     logger.error('fetchStudentQuizRows failed', error, { userId });
-    return [];
+    throw error;
   }
 
   const rows: DashboardQuizRow[] = [];
@@ -107,11 +111,11 @@ export async function fetchStudentClassCode(
     .from('student_class_code')
     .select('class_code')
     .eq('uuid', userId)
-    .single();
+    .maybeSingle();
 
   if (error) {
     logger.error('fetchStudentClassCode failed', error, { userId });
-    return null;
+    throw error;
   }
 
   return data?.class_code ?? null;
@@ -128,7 +132,7 @@ export async function fetchStudentPftStatus(
 
   if (error) {
     logger.error('fetchStudentPftStatus failed', error, { userId });
-    return { preFinished: false, postFinished: false };
+    throw error;
   }
 
   const checkFinished = (column: { finishedTestIndex?: number[] } | null) => {
@@ -170,10 +174,11 @@ export async function fetchTeacherClassOwnership(
     .select('class_code')
     .eq('uuid', teacherId)
     .eq('class_code', classCode)
-    .single();
+    .maybeSingle();
 
   if (error) {
     logger.error('fetchTeacherClassOwnership failed', error, { teacherId, classCode });
+    throw error;
   }
 
   return !error && !!data;
@@ -184,7 +189,7 @@ export async function fetchQuizNumbers(): Promise<number[]> {
 
   if (error) {
     logger.error('fetchQuizNumbers failed', error);
-    return [];
+    throw error;
   }
 
   return (data ?? [])

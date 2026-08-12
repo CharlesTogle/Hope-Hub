@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import Table from '@/components/dashboard/ViewClass/Table';
 import { getStudentsByClassCode } from '@/services/getStudentDataByClassCode';
 import { cleanStudentData } from '@/services/cleanStudentData';
@@ -34,9 +34,11 @@ import {
   fetchTeacherClassOwnership,
 } from '@/queries/dashboard-queries';
 import type { CleanedStudent } from '@/types/student';
+import { getUserFacingError } from '@/utilities/user-facing-errors';
 
 export default function ViewClass () {
   const params = useParams<{ classCode: string }>();
+  const navigate = useNavigate();
   const classCode = params.classCode;
   const { profile } = useAuthStore();
   const userId = profile?.uuid ?? null;
@@ -57,7 +59,7 @@ export default function ViewClass () {
 
   useEffect(() => resetViewClass, [resetViewClass]);
 
-  const { data: quizNumbers = [], isLoading: quizLoading } = useQuery<number[]>({
+  const { data: quizNumbers = [], isLoading: quizLoading, isError: quizError, error: quizRequestError, refetch: refetchQuizNumbers } = useQuery<number[]>({
     queryKey: quizKeys.list(),
     queryFn: fetchQuizNumbers,
   });
@@ -65,13 +67,13 @@ export default function ViewClass () {
   const quizData = buildQuizFilterItems(quizNumbers);
   const combinedData = [...lecturesData, ...quizData];
 
-  const { data: hasOwnership = false, isLoading: ownershipLoading } = useQuery({
+  const { data: hasOwnership = false, isLoading: ownershipLoading, isError: ownershipError, error: ownershipRequestError, refetch: refetchOwnership } = useQuery({
     queryKey: ['class', 'ownership', userId ?? '', classCode ?? ''],
     queryFn: () => fetchTeacherClassOwnership(userId ?? '', classCode ?? ''),
     enabled: !!userId && !!classCode,
   });
 
-  const { data: defaultStudentData = [], isLoading: studentsLoading } = useQuery<CleanedStudent[]>({
+  const { data: defaultStudentData = [], isLoading: studentsLoading, isError: studentsError, error: studentsRequestError, refetch: refetchStudents } = useQuery<CleanedStudent[]>({
     queryKey: classKeys.students(classCode ?? ''),
     queryFn: async () => {
       const allStudentData = await getStudentsByClassCode(classCode ?? '');
@@ -140,7 +142,20 @@ export default function ViewClass () {
   };
 
   if (ownershipLoading || studentsLoading || quizLoading) return <Loading />;
-  if (!hasOwnership) return <ErrorMessage text='Error 404' subText='Class Not Found' />;
+  if (quizError || ownershipError || studentsError) {
+    const requestError = quizRequestError ?? ownershipRequestError ?? studentsRequestError;
+    const retry = quizError ? refetchQuizNumbers : ownershipError ? refetchOwnership : refetchStudents;
+    return <ErrorMessage title="We couldn't load this class" description={getUserFacingError(requestError, 'load')} onRetry={() => void retry()} />;
+  }
+  if (!hasOwnership) {
+    return (
+      <ErrorMessage
+        title='Class not found'
+        description='We could not find that class or you may not have access to it.'
+        onBack={() => navigate('/dashboard')}
+      />
+    );
+  }
 
   return (
     <section className='parent-container' id='view-class'>

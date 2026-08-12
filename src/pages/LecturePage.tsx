@@ -1,6 +1,6 @@
 import { Lessons } from '@/utilities/Lessons';
 import { useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import PageHeading from '@/components/PageHeading';
 import LecturePDF from '@/components/lectures/LecturePDF';
 import ErrorMessage from '@/components/utilities/ErrorMessage';
@@ -12,9 +12,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { lectureKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import type { LectureProgressItem } from '@/types/lecture';
+import { getUserFacingError } from '@/utilities/user-facing-errors';
 
 export default function LecturePage() {
   const { lessonNumber } = useParams<{ lessonNumber: string }>();
+  const navigate = useNavigate();
   const { profile } = useAuthStore();
   const userId = profile?.uuid ?? null;
   const isTeacher = profile?.user_type === 'teacher';
@@ -24,7 +26,7 @@ export default function LecturePage() {
   const lessonDetails = Lessons.find((lesson) => lesson.key === selectedLessonNumber);
 
   // Fetch lecture progress
-  const { data: lectureProgress = LectureProgress(), isLoading } = useQuery({
+  const { data: lectureProgress = LectureProgress(), isLoading, isError, error, refetch } = useQuery({
     queryKey: lectureKeys.progress(userId ?? ''),
     queryFn: async () => {
       const { data, error } = await supabase
@@ -32,7 +34,8 @@ export default function LecturePage() {
         .select('lecture_progress')
         .eq('uuid', userId)
         .single();
-      if (error || !data?.lecture_progress) return LectureProgress();
+      if (error) throw error;
+      if (!data?.lecture_progress) return LectureProgress();
       return data.lecture_progress;
     },
     enabled: !!userId,
@@ -134,8 +137,11 @@ export default function LecturePage() {
     finishMutation.mutate();
   };
 
-  if (!lessonDetails) return <ErrorMessage text='Error 404' subText='Page not found' />;
+  if (!lessonDetails) return <ErrorMessage title='Lecture not found' description='That lesson is no longer available.' onBack={() => navigate('/lectures')} />;
   if (isLoading || !userId) return <Loading />;
+  if (isError) {
+    return <ErrorMessage title="We couldn't load your lecture progress" description={getUserFacingError(error, 'load')} onRetry={() => void refetch()} />;
+  }
 
   const { pdf, introduction, title, quizLink } = lessonDetails;
 

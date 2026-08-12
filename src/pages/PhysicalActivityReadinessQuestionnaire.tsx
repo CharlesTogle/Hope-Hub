@@ -17,6 +17,7 @@ import type {
   PFTGender,
   PFTSessionData,
 } from '@/types/physical-fitness';
+import { getUserFacingError } from '@/utilities/user-facing-errors';
 
 const QUESTIONS = [
   'Has your doctor ever said that you have a heart condition and that you should only do physical activity recommended by a doctor?',
@@ -133,10 +134,10 @@ export default function PhysicalActivityReadinessQuestionnaire() {
     try {
       await savePftSession(userId, 'pre_physical_fitness_test', updatedData);
       queryClient.invalidateQueries({ queryKey: pftKeys.session(userId) });
-    } catch {
+    } catch (error) {
       dispatch({
         type: 'show-error',
-        message: 'Failed to save test data. Please try again.',
+        message: getUserFacingError(error, 'pft-save'),
       });
       return;
     }
@@ -238,10 +239,10 @@ export default function PhysicalActivityReadinessQuestionnaire() {
     try {
       await savePftSession(userId, testType, updatedData);
       queryClient.invalidateQueries({ queryKey: pftKeys.session(userId) });
-    } catch {
+    } catch (error) {
       dispatch({
         type: 'show-error',
-        message: 'Failed to save test data.',
+        message: getUserFacingError(error, 'pft-save'),
       });
       return;
     }

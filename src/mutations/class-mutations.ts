@@ -33,7 +33,7 @@ export async function joinStudentClass(
     .eq('uuid', userId);
 
   if (error) {
-    throw new Error(error.message);
+    throw error;
   }
 }
 
@@ -44,7 +44,7 @@ export async function leaveStudentClass(userId: string): Promise<void> {
     .eq('uuid', userId);
 
   if (error) {
-    throw new Error(error.message);
+    throw error;
   }
 }
 
@@ -137,6 +137,6 @@ export async function removeTeacherClassCode(
     .eq('uuid', teacherId);
 
   if (error) {
-    throw new Error(error.message);
+    throw error;
   }
 }

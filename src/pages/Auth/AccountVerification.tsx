@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import ErrorMessage from '@/components/utilities/ErrorMessage';
 import supabase from '@/client/supabase';
 import { logger } from '@/utilities/logger';
+import { getUserFacingError } from '@/utilities/user-facing-errors';
 import Loading from '@/components/Loading';
 import type { UserType } from '@/types/auth';
 import type { LectureProgressItem } from '@/types/lecture';
@@ -201,7 +202,8 @@ function ExpiredVerification({ result }: { result: VerificationResult & { status
     });
     setIsResending(false);
     if (error) {
-      toast.error(error.message);
+      logger.error('Verification email resend failed', error);
+      toast.error(getUserFacingError(error, 'verification-resend'));
     } else {
       setResent(true);
       toast.success('Verification email sent. Please check your inbox.');
@@ -260,7 +262,13 @@ export default function AccountVerification() {
   }
 
   if (!result || result.status === 'bad-request') {
-    return <ErrorMessage text='Error 400' subText='Bad Request' />;
+    return (
+      <ErrorMessage
+        title='Verification link is not valid'
+        description='Please register again to request a new verification email.'
+        onBack={() => navigate('/auth/register')}
+      />
+    );
   }
 
   if (result.status === 'expired') {

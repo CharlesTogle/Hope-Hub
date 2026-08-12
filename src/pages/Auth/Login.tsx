@@ -5,7 +5,6 @@ import FormInput from '@/components/auth/FormInput';
 import InputContainer from '@/components/auth/InputContainer';
 import FormButton from '@/components/auth/FormButton';
 import { useEffect, useReducer, useRef } from 'react';
-import { AuthApiError } from '@supabase/supabase-js';
 import { useQueryClient } from '@tanstack/react-query';
 import supabase, { setRememberMePreference } from '@/client/supabase';
 import { authKeys } from '@/lib/query-keys';
@@ -13,6 +12,7 @@ import { fetchAuthenticatedProfile } from '@/queries/auth-queries';
 import { useAuthStore } from '@/store/auth-store';
 import { useNavigate } from 'react-router-dom';
 import { logger } from '@/utilities/logger';
+import { getUserFacingError } from '@/utilities/user-facing-errors';
 
 interface LoginState {
   email: string;
@@ -64,26 +64,6 @@ function reducer(state: LoginState, action: LoginAction): LoginState {
   }
 }
 
-function getLoginErrorMessage(error: unknown): string {
-  if (error instanceof AuthApiError) {
-    if (error.message === 'Invalid login credentials') {
-      return 'Invalid email or password. Please try again.';
-    }
-
-    if (error.message === 'Email not confirmed') {
-      return 'Please verify your email before logging in.';
-    }
-
-    return 'Authentication failed. Please try again.';
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return 'An unexpected error occurred. Please try again.';
-}
-
 export default function Login() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const navigate = useNavigate();
@@ -117,7 +97,7 @@ export default function Login() {
         logger.error('Login failed', error);
         dispatch({
           type: 'set-error',
-          value: getLoginErrorMessage(error),
+          value: getUserFacingError(error, 'login'),
         });
         return;
       }
@@ -146,7 +126,7 @@ export default function Login() {
       logger.error('Unexpected login error', error);
       dispatch({
         type: 'set-error',
-        value: getLoginErrorMessage(error),
+        value: getUserFacingError(error, 'login'),
       });
     } finally {
       dispatch({ type: 'set-submitting', value: false });

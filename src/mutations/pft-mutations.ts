@@ -12,6 +12,6 @@ export async function savePftSession(
     .eq('uuid', userId);
 
   if (error) {
-    throw new Error(error.message);
+    throw error;
   }
 }

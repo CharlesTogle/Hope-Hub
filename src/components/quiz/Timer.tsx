@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import TimerIcon from '@/assets/icons/timer_quiz.png';
 import { updateRemainingTime } from '@/mutations/quiz-mutations';
 import { useParams } from 'react-router-dom';
@@ -10,16 +10,18 @@ interface TimerProps {
   duration: number;
   color: 'red';
   onTimerEnd: () => void;
+  onSyncError?: () => void;
 }
 
 const colorClassNames: Record<TimerProps['color'], string> = {
   red: 'text-red',
 };
 
-export default function Timer({ duration, color, onTimerEnd }: TimerProps) {
+export default function Timer({ duration, color, onTimerEnd, onSyncError }: TimerProps) {
   const { quizId } = useParams();
   const [time, setTime] = useState(0);
   const [hasTimerEnded, setHasTimerEnded] = useState(false);
+  const hasReportedSyncError = useRef(false);
   const setRemainingTime = useQuizStore((state) => state.setRemainingTime);
 
   useEffect(() => {
@@ -38,14 +40,22 @@ export default function Timer({ duration, color, onTimerEnd }: TimerProps) {
         setRemainingTime(remainingTime);
       }
       if (quizId) {
-        updateRemainingTime(quizId, remainingTime).catch((error) => {
-          logger.error('Timer sync failed', error, { quizId, remainingTime });
-        });
+        updateRemainingTime(quizId, remainingTime)
+          .then(() => {
+            hasReportedSyncError.current = false;
+          })
+          .catch((error) => {
+            logger.error('Timer sync failed', error, { quizId, remainingTime });
+            if (!hasReportedSyncError.current) {
+              hasReportedSyncError.current = true;
+              onSyncError?.();
+            }
+          });
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [duration, quizId, setRemainingTime]);
+  }, [duration, onSyncError, quizId, setRemainingTime]);
 
   useEffect(() => {
     if (!hasTimerEnded) return;

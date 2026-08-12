@@ -11,6 +11,8 @@ import { useQuery } from '@tanstack/react-query';
 import { lectureKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import type { LessonStatus, LectureProgressItem } from '@/types/lecture';
+import ErrorMessage from '@/components/utilities/ErrorMessage';
+import { getUserFacingError } from '@/utilities/user-facing-errors';
 
 const LectureFilters: LessonStatus[] = ['Done', 'Pending', 'Incomplete'];
 const AllFilters = ['All', ...LectureFilters] as const;
@@ -23,7 +25,7 @@ export default function Lectures() {
   const isTeacher = profile?.user_type === 'teacher';
   const navigate = useNavigate();
 
-  const { data: storedProgress = LectureProgress(), isLoading } = useQuery({
+  const { data: storedProgress = LectureProgress(), isLoading, isError, error, refetch } = useQuery({
     queryKey: lectureKeys.progress(userId ?? ''),
     queryFn: async () => {
       const { data, error } = await supabase
@@ -31,7 +33,8 @@ export default function Lectures() {
         .select('lecture_progress')
         .eq('uuid', userId)
         .single();
-      if (error || !data?.lecture_progress) return LectureProgress();
+      if (error) throw error;
+      if (!data?.lecture_progress) return LectureProgress();
       return data.lecture_progress;
     },
     enabled: !!userId,
@@ -45,6 +48,9 @@ export default function Lectures() {
   }).filter((lesson) => activeFilter === 'All' || lesson.status === activeFilter);
 
   if (isLoading) return <Loading />;
+  if (isError) {
+    return <ErrorMessage title="We couldn't load your lectures" description={getUserFacingError(error, 'load')} onRetry={() => void refetch()} />;
+  }
 
   return (
     <section

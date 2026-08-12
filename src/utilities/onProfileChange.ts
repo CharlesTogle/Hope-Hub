@@ -1,5 +1,6 @@
 import supabase from '@/client/supabase';
 import { logger } from '@/utilities/logger';
+import { getUserFacingError } from '@/utilities/user-facing-errors';
 
 const IMAGE_MAGIC_BYTES: Record<string, Uint8Array> = {
   'image/jpeg': new Uint8Array([0xFF, 0xD8, 0xFF]),
@@ -50,7 +51,7 @@ export async function onProfileChange(
 
   if (error) {
     logger.error('onProfileChange upload failed', error, { userID, filePath });
-    return { success: false, error: error.message };
+    return { success: false, error: getUserFacingError(error, 'profile-upload') };
   }
 
   return { success: true };

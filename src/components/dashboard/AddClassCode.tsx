@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import { createTeacherClassCode } from '@/mutations/class-mutations';
 import type { ClassCode } from '@/types/student';
+import { getUserFacingError } from '@/utilities/user-facing-errors';
 
 interface ColorPickerProps {
   value: string;
@@ -113,9 +114,7 @@ export default function AddClassCode({
       setClassName('');
       setClassColor('FFD700');
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Failed to create class.';
-      setError(message);
+      setError(getUserFacingError(error, 'class-management'));
     } finally {
       setIsLoading(false);
     }

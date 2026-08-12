@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Timer from '@/components/quiz/Timer';
 import Loading from '@/components/Loading';
 import QuizBody from '@/components/quiz/quiz-body';
@@ -36,7 +36,9 @@ export default function QuizGame({
   const [isLoading, setIsLoading] = useState(false);
   const [isAnswerLocked, setIsAnswerLocked] = useState(false);
   const [shouldShowPoints, setShouldShowPoints] = useState(false);
+  const [timerSyncError, setTimerSyncError] = useState(false);
   const answerTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleTimerSyncError = useCallback(() => setTimerSyncError(true), []);
 
   const currentQuestion = questions[quizState.questionIndex];
 
@@ -174,6 +176,7 @@ export default function QuizGame({
             key={quizState.questionIndex}
             duration={shouldShowPoints ? remainingTime : quizState.remainingTime}
             color="red"
+            onSyncError={handleTimerSyncError}
             onTimerEnd={() => {
               handleAnswerSelected(
                 isIdentification ? identificationAnswer : '',
@@ -184,6 +187,11 @@ export default function QuizGame({
           />
         )}
       </div>
+      {timerSyncError && (
+        <p role='status' className='text-red text-sm'>
+          Your remaining time couldn't be saved. Check your connection and keep this page open while we try again.
+        </p>
+      )}
       {quizState.status === 'Pending' ? (
         <QuizBody
           key={quizState.questionIndex}
