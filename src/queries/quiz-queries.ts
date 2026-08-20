@@ -10,6 +10,7 @@ import type {
 } from '@/types/quiz';
 import type { User } from '@supabase/supabase-js';
 import { logger } from '@/utilities/logger';
+import { isFinishedTestIndexes } from '@/lib/pft-session';
 
 export async function getCurrentUser(): Promise<User> {
   const { data: { user }, error } = await supabase.auth.getUser();
@@ -34,10 +35,8 @@ export async function fetchQuizzesOfUser(user: User): Promise<QuizWithProgress[]
     .single();
 
   if (
-    pftData?.pre_physical_fitness_test &&
-    pftData?.post_physical_fitness_test &&
-    !pftData.post_physical_fitness_test.finishedTestIndex.includes(-1) &&
-    !pftData.pre_physical_fitness_test.finishedTestIndex.includes(-1)
+    isFinishedTestIndexes(pftData?.pre_physical_fitness_test?.finishedTestIndex) &&
+    isFinishedTestIndexes(pftData?.post_physical_fitness_test?.finishedTestIndex)
   ) {
     await supabase
       .from('quiz_progress')

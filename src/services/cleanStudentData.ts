@@ -1,4 +1,5 @@
 import type { CleanedStudent, RawStudentData } from '@/types/student';
+import { isFinishedTestIndexes } from '@/lib/pft-session';
 
 export function cleanStudentData(studentData: RawStudentData[]): CleanedStudent[] {
   const cleanedData: CleanedStudent[] = [];
@@ -22,21 +23,13 @@ export function cleanStudentData(studentData: RawStudentData[]): CleanedStudent[
     if (preTest && preTest[0]) {
       const { finishedTestIndex } = preTest[0];
       clean.prePFTRaw = preTest[0];
-      if (finishedTestIndex) {
-        clean.preTestCompleted =
-          finishedTestIndex &&
-          finishedTestIndex.includes(finishedTestIndex.length - 1);
-      }
+      clean.preTestCompleted = isFinishedTestIndexes(finishedTestIndex);
     }
 
     if (postTest && postTest[0]) {
       const { finishedTestIndex } = postTest[0];
       clean.postPFTRaw = postTest[0];
-      if (finishedTestIndex) {
-        clean.postTestCompleted =
-          finishedTestIndex &&
-          finishedTestIndex.includes(finishedTestIndex.length - 1);
-      }
+      clean.postTestCompleted = isFinishedTestIndexes(finishedTestIndex);
     }
 
     const quizData = data.quiz_data;

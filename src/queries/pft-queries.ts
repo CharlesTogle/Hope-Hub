@@ -37,7 +37,7 @@ export async function fetchPftRecord(
 
   if (error) {
     logger.error('fetchPftRecord failed', error, { userId });
-    return null;
+    throw error;
   }
 
   return data as PFTRecordRow;

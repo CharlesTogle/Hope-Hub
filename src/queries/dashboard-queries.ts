@@ -1,6 +1,7 @@
 import supabase from '@/client/supabase';
 import type { ClassCode, DashboardQuizRow, ProgressStats, StudentPftStatus } from '@/types/student';
 import { logger } from '@/utilities/logger';
+import { isFinishedTestIndexes } from '@/lib/pft-session';
 
 export async function fetchLectureProgressSummary(
   userId: string,
@@ -135,14 +136,9 @@ export async function fetchStudentPftStatus(
     throw error;
   }
 
-  const checkFinished = (column: { finishedTestIndex?: number[] } | null) => {
-    const indexes = column?.finishedTestIndex;
-    return !!(indexes && indexes.includes(indexes.length - 1));
-  };
-
   return {
-    preFinished: checkFinished(data.pre_physical_fitness_test),
-    postFinished: checkFinished(data.post_physical_fitness_test),
+    preFinished: isFinishedTestIndexes(data.pre_physical_fitness_test?.finishedTestIndex),
+    postFinished: isFinishedTestIndexes(data.post_physical_fitness_test?.finishedTestIndex),
   };
 }
 

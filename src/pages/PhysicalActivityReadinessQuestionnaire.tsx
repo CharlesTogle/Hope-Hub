@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useReducer } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeading from '@/components/PageHeading';
 import { AlertMessage } from '@/components/utilities/AlertMessage';
 import Footer from '@/components/Footer';
 import Loading from '@/components/Loading';
+import ErrorMessage from '@/components/utilities/ErrorMessage';
 import { pftKeys } from '@/lib/query-keys';
-import { getNextUnfinishedTestIndex } from '@/lib/pft-session';
+import { derivePftStatus, getNextUnfinishedTestIndex } from '@/lib/pft-session';
 import { savePftSession } from '@/mutations/pft-mutations';
 import { fetchPftRecord } from '@/queries/pft-queries';
 import { usePhysicalFitnessStore } from '@/store/physical-fitness-store';
@@ -81,6 +82,7 @@ export default function PhysicalActivityReadinessQuestionnaire() {
   );
   const updateField = usePhysicalFitnessStore((state) => state.updateField);
   const [state, dispatch] = useReducer(parqReducer, undefined, createInitialParqState);
+  const [isAlreadyComplete, setIsAlreadyComplete] = useState(false);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { profile } = useAuthStore();
@@ -103,19 +105,38 @@ export default function PhysicalActivityReadinessQuestionnaire() {
     physicalFitnessData.gender && physicalFitnessData.category
   );
 
-  const { data: pftRecord, isFetching, isLoading: pftLoading } = useQuery({
+  const {
+    data: pftRecord,
+    isError: pftError,
+    isFetching,
+    isLoading: pftLoading,
+    refetch: refetchPft,
+  } = useQuery({
     queryKey: pftKeys.session(userId ?? ''),
     queryFn: () => fetchPftRecord(userId ?? ''),
     enabled: !!userId,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
+  const pftStatus = useMemo(
+    () => (pftRecord ? derivePftStatus(pftRecord) : null),
+    [pftRecord],
+  );
 
   useEffect(() => {
-    if (isFetching || userType !== 'teacher' || !userId) {
+    if (isFetching || !userId) {
       return;
     }
 
-    void navigateTeacher();
-  }, [isFetching, userId, userType]);
+    if (userType !== 'teacher' && pftStatus?.isTaken) {
+      setIsAlreadyComplete(true);
+      return;
+    }
+
+    if (userType === 'teacher') {
+      void navigateTeacher();
+    }
+  }, [isFetching, navigate, pftStatus?.isTaken, userId, userType]);
 
   const navigateTeacher = async () => {
     if (!userId) {
@@ -207,22 +228,11 @@ export default function PhysicalActivityReadinessQuestionnaire() {
     const postFinishedIndexes =
       pftRecord.post_physical_fitness_test?.finishedTestIndex ?? [];
 
-    let testType: 'pre_physical_fitness_test' | 'post_physical_fitness_test';
-    let targetFinishedIndexes: number[];
-
-    if (preFinishedIndexes.length === 0 || preFinishedIndexes.includes(-1)) {
-      testType = 'pre_physical_fitness_test';
-      targetFinishedIndexes = preFinishedIndexes;
-    } else if (postFinishedIndexes.length === 0 || postFinishedIndexes.includes(-1)) {
-      testType = 'post_physical_fitness_test';
-      targetFinishedIndexes = postFinishedIndexes;
-    } else {
-      dispatch({
-        type: 'show-error',
-        message: 'You have already completed all tests.',
-      });
-      return;
-    }
+    const testType = pftStatus?.testType ?? 'pre_physical_fitness_test';
+    const targetFinishedIndexes =
+      testType === 'pre_physical_fitness_test'
+        ? preFinishedIndexes
+        : postFinishedIndexes;
 
     const updatedData = {
       ...PhysicalFitnessData,
@@ -261,7 +271,27 @@ export default function PhysicalActivityReadinessQuestionnaire() {
     updateField(keyName, value);
   };
 
-  if (pftLoading || !userId || userType === 'teacher') return <Loading />;
+  if (pftLoading || isFetching || !userId || userType === 'teacher') return <Loading />;
+
+  if (pftError || !pftRecord) {
+    return (
+      <ErrorMessage
+        title="We couldn't load your test record"
+        description='Your test was not started to prevent overwriting existing results.'
+        onRetry={() => void refetchPft()}
+      />
+    );
+  }
+
+  if (isAlreadyComplete) {
+    return (
+      <AlertMessage
+        text='You have already finished the pre-test and post-test. Go to the dashboard to view your records.'
+        onConfirm={() => void navigate('/dashboard')}
+        onCancel={() => void navigate('/dashboard')}
+      />
+    );
+  }
 
   return (
     <div id="physical-fitness-test-parq" className="w-full min-h-screen max-h-fit">

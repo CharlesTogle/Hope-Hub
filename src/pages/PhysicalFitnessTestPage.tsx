@@ -37,10 +37,18 @@ export function PhysicalFitnessTestPage() {
     (!finishedTestIndex.includes(currentTestIndex - 1) ||
       finishedTestIndex.length <= currentTestIndex);
 
-  const { data: pftRecord, isFetching: pftFetching, isLoading: pftLoading } = useQuery({
+  const {
+    data: pftRecord,
+    isError: pftError,
+    isFetching: pftFetching,
+    isLoading: pftLoading,
+    refetch: refetchPft,
+  } = useQuery({
     queryKey: pftKeys.session(userId ?? ''),
     queryFn: () => fetchPftRecord(userId ?? ''),
     enabled: !!userId,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const pftStatus = useMemo(() => pftRecord ? derivePftStatus(pftRecord) : null, [pftRecord]);
@@ -84,8 +92,18 @@ export function PhysicalFitnessTestPage() {
     navigate('/physical-fitness-test/parq');
   };
 
-  if (pftLoading || !userId) {
+  if (pftLoading || pftFetching || !userId) {
     return <Loading />;
+  }
+
+  if (pftError || !pftRecord) {
+    return (
+      <ErrorMessage
+        title="We couldn't load your test record"
+        description='Your test was not started to prevent overwriting existing results.'
+        onRetry={() => void refetchPft()}
+      />
+    );
   }
 
   if (isBadRequest) {

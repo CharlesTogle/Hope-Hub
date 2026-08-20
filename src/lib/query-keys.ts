@@ -24,6 +24,7 @@ export const lectureKeys = {
 
 export const pftKeys = {
   session: (id: string) => ['pft', 'session', id] as const,
+  status: (id: string) => ['pft', 'status', id] as const,
   summary: (scope: string, id: string, testType: string) =>
     ['pft', 'summary', scope, id, testType] as const,
 };

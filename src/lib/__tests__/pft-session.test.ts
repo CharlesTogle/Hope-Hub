@@ -2,12 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { PhysicalFitnessData } from '@/utilities/PhysicalFitnessData';
 import {
   isFinishedTestSession,
+  isFinishedTestIndexes,
   getNextUnfinishedTestIndex,
   derivePftStatus,
   resetPftProgress,
 } from '@/lib/pft-session';
 import type { PFTSessionData } from '@/types/physical-fitness';
 import type { PFTRecordRow } from '@/lib/pft-session';
+
+const finishedTestIndexes = PhysicalFitnessData.finishedTestIndex.map((_, index) => index);
 
 describe('isFinishedTestSession', () => {
   it('returns false for null', () => {
@@ -24,9 +27,22 @@ describe('isFinishedTestSession', () => {
     expect(isFinishedTestSession(session)).toBe(false);
   });
 
+  it('returns false when only some tests are listed as finished', () => {
+    const session: PFTSessionData = { ...PhysicalFitnessData, finishedTestIndex: [0, 1, 2] };
+    expect(isFinishedTestSession(session)).toBe(false);
+  });
+
   it('returns true when all finished', () => {
-    const session: PFTSessionData = { ...PhysicalFitnessData, finishedTestIndex: [0, 1, 2, 3, 4, 5, 6, 7] };
+    const session: PFTSessionData = { ...PhysicalFitnessData, finishedTestIndex: finishedTestIndexes };
     expect(isFinishedTestSession(session)).toBe(true);
+  });
+});
+
+describe('isFinishedTestIndexes', () => {
+  it('rejects arrays that only contain the last index', () => {
+    const lastIndex = PhysicalFitnessData.finishedTestIndex.length - 1;
+    expect(isFinishedTestIndexes([lastIndex])).toBe(false);
+    expect(isFinishedTestIndexes([0, lastIndex])).toBe(false);
   });
 });
 
@@ -59,14 +75,14 @@ describe('derivePftStatus', () => {
 
   it('returns post when pre done but post not finished', () => {
     const record: PFTRecordRow = {
-      pre_physical_fitness_test: { ...PhysicalFitnessData, finishedTestIndex: [0, 1, 2, 3, 4, 5, 6, 7] },
+      pre_physical_fitness_test: { ...PhysicalFitnessData, finishedTestIndex: finishedTestIndexes },
       post_physical_fitness_test: { ...PhysicalFitnessData, finishedTestIndex: [] },
     };
     expect(derivePftStatus(record)).toEqual({ isTaken: false, testType: 'post_physical_fitness_test' });
   });
 
   it('returns isTaken true when both done', () => {
-    const done = { ...PhysicalFitnessData, finishedTestIndex: [0, 1, 2, 3, 4, 5, 6, 7] };
+    const done = { ...PhysicalFitnessData, finishedTestIndex: finishedTestIndexes };
     const record: PFTRecordRow = {
       pre_physical_fitness_test: done,
       post_physical_fitness_test: done,
@@ -82,7 +98,7 @@ describe('resetPftProgress', () => {
       gender: 'Female',
       category: 'secondaryGirls',
       isPARQFinished: true,
-      finishedTestIndex: [0, 1, 2, 3, 4, 5, 6, 7],
+      finishedTestIndex: finishedTestIndexes,
     };
     const result = resetPftProgress(session);
     expect(result.gender).toBe('Female');
