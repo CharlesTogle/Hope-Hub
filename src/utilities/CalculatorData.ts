@@ -19,8 +19,6 @@ export const CalculatorData = {
     description:
       'The Body Mass Index (BMI) Calculator estimates whether your weight is appropriate for your height. It uses a simple formula — weight divided by height squared — to classify your body size into categories like underweight, normal, overweight, or obese. BMI is commonly used in public health and clinical settings as a general indicator of potential weight-related health risks. A BMI within the “normal” range is associated with a lower likelihood of chronic conditions such as heart disease, diabetes, and high blood pressure. Higher or lower values may suggest the need for lifestyle changes or further medical evaluation. Although BMI is not a direct measure of body fat or overall health, it is a useful screening tool that can help guide awareness and decisions about physical well-being.', keywords,
     instructions: [
-      'Choose your gender (male or female).',
-      'Input your age in years.',
       'Enter your height in your prefered unit (Ft, Cm, M). You can select units by selecting the drop-down icon.',
       'Enter your weight in your prefered unit (kg, lbs).',
       'Click calculate.',
