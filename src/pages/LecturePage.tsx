@@ -33,7 +33,7 @@ export default function LecturePage() {
         .from('lecture_progress')
         .select('lecture_progress')
         .eq('uuid', userId ?? '')
-        .single();
+        .maybeSingle();
       if (error) throw error;
       if (!data?.lecture_progress) return LectureProgress();
       return data.lecture_progress;
