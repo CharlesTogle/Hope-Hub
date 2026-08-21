@@ -13,8 +13,7 @@ export async function savePftSession(
       : { post_physical_fitness_test: sessionData };
   const { error } = await supabase
     .from('physical_fitness_test')
-    .update(update)
-    .eq('uuid', userId);
+    .upsert({ uuid: userId, ...update }, { onConflict: 'uuid' });
 
   if (error) {
     throw error;

@@ -136,7 +136,7 @@ export async function fetchStudentPftStatus(
     .from('physical_fitness_test')
     .select('pre_physical_fitness_test, post_physical_fitness_test')
     .eq('uuid', userId)
-    .single();
+    .maybeSingle();
 
   if (error) {
     logger.error('fetchStudentPftStatus failed', error, { userId });
@@ -144,8 +144,8 @@ export async function fetchStudentPftStatus(
   }
 
   return {
-    preFinished: isFinishedTestIndexes(data.pre_physical_fitness_test?.finishedTestIndex),
-    postFinished: isFinishedTestIndexes(data.post_physical_fitness_test?.finishedTestIndex),
+    preFinished: isFinishedTestIndexes(data?.pre_physical_fitness_test?.finishedTestIndex),
+    postFinished: isFinishedTestIndexes(data?.post_physical_fitness_test?.finishedTestIndex),
   };
 }
 

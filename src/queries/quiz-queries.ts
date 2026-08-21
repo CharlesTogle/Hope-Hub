@@ -33,7 +33,7 @@ export async function fetchQuizzesOfUser(user: User): Promise<QuizWithProgress[]
     .from('physical_fitness_test')
     .select('*')
     .eq('uuid', user.id)
-    .single();
+    .maybeSingle();
 
   if (
     isFinishedTestIndexes(pftData?.pre_physical_fitness_test?.finishedTestIndex) &&

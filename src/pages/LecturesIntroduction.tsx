@@ -34,7 +34,7 @@ export default function Lectures() {
         .eq('uuid', userId ?? '')
         .maybeSingle();
       if (error) throw error;
-      if (!data?.lecture_progress) return LectureProgress();
+      if (!data?.lecture_progress?.length) return LectureProgress();
       return data.lecture_progress;
     },
     enabled: !!userId,

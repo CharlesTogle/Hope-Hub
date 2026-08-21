@@ -35,7 +35,7 @@ export default function LecturePage() {
         .eq('uuid', userId ?? '')
         .maybeSingle();
       if (error) throw error;
-      if (!data?.lecture_progress) return LectureProgress();
+      if (!data?.lecture_progress?.length) return LectureProgress();
       return data.lecture_progress;
     },
     enabled: !!userId,
@@ -54,8 +54,7 @@ export default function LecturePage() {
 
       const { error } = await supabase
         .from('lecture_progress')
-        .update({ lecture_progress: updated })
-        .eq('uuid', userId ?? '');
+        .upsert({ uuid: userId, lecture_progress: updated }, { onConflict: 'uuid' });
 
       if (error) {
         throw error;
@@ -100,10 +99,13 @@ export default function LecturePage() {
       const updated = lectureProgress.map((p: LectureProgressItem) =>
         p.key === selectedLessonNumber ? { ...p, status: 'Done' as const } : p,
       );
-      await supabase
+      const { error: lectureProgressError } = await supabase
         .from('lecture_progress')
-        .update({ lecture_progress: updated })
-        .eq('uuid', userId ?? '');
+        .upsert({ uuid: userId, lecture_progress: updated }, { onConflict: 'uuid' });
+
+      if (lectureProgressError) {
+        throw lectureProgressError;
+      }
 
       const { data: existingQuizProgress, error: quizProgressError } = await supabase
         .from('quiz_progress')
@@ -119,13 +121,14 @@ export default function LecturePage() {
       if (!existingQuizProgress) {
         const { error: insertError } = await supabase
           .from('quiz_progress')
-          .insert([
+          .upsert(
             {
               user_id: currentUserId,
               quiz_id: selectedLessonNumber,
               status: 'Pending' as const,
             },
-          ]);
+            { onConflict: 'user_id, quiz_id' },
+          );
 
         if (insertError) {
           throw insertError;

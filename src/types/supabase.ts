@@ -162,6 +162,10 @@ export interface Database {
       };
     };
     Functions: {
+      ensure_current_user_data: {
+        Args: Record<string, never>;
+        Returns: undefined;
+      };
       class_code_exists: {
         Args: { [key: string]: unknown; p_class_code: string };
         Returns: boolean;
