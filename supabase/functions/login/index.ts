@@ -4,9 +4,12 @@
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { corsHeadersFor } from "../_shared/cors.ts";
+import {
+  enforceRateLimit,
+  rateLimitResponse,
+  RateLimitUnavailableError,
+} from "../_shared/rate-limit.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.43.4";
-import { Redis } from "https://deno.land/x/upstash_redis@v1.19.3/mod.ts";
-import { Ratelimit } from "https://cdn.skypack.dev/@upstash/ratelimit@latest";
 Deno.serve(async (req)=>{
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL") ?? "", Deno.env.get("SUPABASE_ANON_KEY") ?? "", {
@@ -36,27 +39,17 @@ Deno.serve(async (req)=>{
       });
     }
     const { email, password } = await req.json();
-    const ip = req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "unknown";
-    const identifier = `login:${ip}:${(email ?? "").toLowerCase()}`;
-    const redis = new Redis({
-      url: Deno.env.get("UPSTASH_REDIS_REST_URL"),
-      token: Deno.env.get("UPSTASH_REDIS_REST_TOKEN")
-    });
-    const ratelimit = new Ratelimit({
-      redis: redis,
-      limiter: Ratelimit.slidingWindow(10, "10 s")
-    });
-    const { success } = await ratelimit.limit(identifier);
-    if (!success) {
-      return new Response(JSON.stringify({
-        message: "rate limit Exceeded"
-      }), {
-        status: 429,
-        headers: {
-          ...corsHeadersFor(req),
-          "Content-Type": "application/json"
-        }
-      });
+    try {
+      const rateLimit = await enforceRateLimit(req, "login", email);
+      if (!rateLimit.allowed) return rateLimitResponse(req, rateLimit.retryAfterSeconds);
+    } catch (error) {
+      if (error instanceof RateLimitUnavailableError) {
+        return new Response(JSON.stringify({ message: "Authentication is temporarily unavailable." }), {
+          status: 503,
+          headers: { ...corsHeadersFor(req), "Content-Type": "application/json", "Retry-After": "60" },
+        });
+      }
+      throw error;
     }
     if (email === "" || password === "") {
       return new Response(JSON.stringify({
