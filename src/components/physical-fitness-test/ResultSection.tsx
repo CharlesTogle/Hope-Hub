@@ -61,7 +61,7 @@ const ResultSection = ({
                   >
                     {label}
                   </label>
-                  <div className='relative ml-2 flex items-center justify-end'>
+                  <div className='ml-2 flex min-w-0 items-center gap-2'>
                     <input
                       onChange={(e) => {
                         let value: string | number = e.target.value;
@@ -95,10 +95,14 @@ const ResultSection = ({
                       disabled={label === 'Time Started' || isTeacher}
                       name={label}
                       id={label}
-                      className='w-[95%] place-self-center h-fit border-1 border-black text-center font-content rounded-sm lg:px-2'
+                      className={`min-w-0 flex-1 h-fit border-1 border-black text-center font-content rounded-sm lg:px-2 ${
+                        label === 'Time End'
+                          ? '[&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator:hover]:opacity-60'
+                          : ''
+                      }`}
                     />
                     {label === 'Record' && unit && (
-                      <span className='right-0 lg:mr-6 mr-5 absolute font-semibold z-990'>
+                      <span className='shrink-0 font-semibold'>
                         {unit}
                       </span>
                     )}
