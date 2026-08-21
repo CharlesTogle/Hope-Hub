@@ -10,14 +10,14 @@ export async function fetchLectureProgressSummary(
     .from('lecture_progress')
     .select('lecture_progress')
     .eq('uuid', userId)
-    .single();
+    .maybeSingle();
 
   if (error) {
     logger.error('fetchLectureProgressSummary failed', error, { userId });
     throw error;
   }
 
-  const lectures = data.lecture_progress || [];
+  const lectures = data ? data.lecture_progress || [] : [];
   let completed = 0;
   let incomplete = 0;
   let pending = 0;
