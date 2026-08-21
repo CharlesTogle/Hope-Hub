@@ -24,6 +24,10 @@ src/learn
 *.sw?
 *.env
 audit-2.md
+audit.md
+test-results/*
+playwright-report
+
 
 # agent files
 CLAUDE.md
