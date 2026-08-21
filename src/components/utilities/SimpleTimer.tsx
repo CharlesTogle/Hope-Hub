@@ -52,7 +52,9 @@ const SimpleTimer = ({
   }, [time, testName]);
 
   return (
-    <div className={`${className} w-fit`}>
+    <div
+      className={`${className} w-fit ${currentTime < 5 * 60 ? 'text-red-600' : ''}`}
+    >
       <img src={timerIcon} alt='rest-timer' className='w-[15%]' />
       <p className='text-nowrap text-sm'>
         {Math.floor(currentTime / 60)}:{' '}

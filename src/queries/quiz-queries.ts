@@ -10,6 +10,8 @@ import type {
 } from '@/types/quiz';
 import type { User } from '@supabase/supabase-js';
 import { logger } from '@/utilities/logger';
+import { isFinishedTestIndexes } from '@/lib/pft-session';
+import { getQuizQuestionDuration } from '@/lib/quiz-timing';
 
 export async function getCurrentUser(): Promise<User> {
   const { data: { user }, error } = await supabase.auth.getUser();
@@ -31,13 +33,11 @@ export async function fetchQuizzesOfUser(user: User): Promise<QuizWithProgress[]
     .from('physical_fitness_test')
     .select('*')
     .eq('uuid', user.id)
-    .single();
+    .maybeSingle();
 
   if (
-    pftData?.pre_physical_fitness_test &&
-    pftData?.post_physical_fitness_test &&
-    !pftData.post_physical_fitness_test.finishedTestIndex.includes(-1) &&
-    !pftData.pre_physical_fitness_test.finishedTestIndex.includes(-1)
+    isFinishedTestIndexes(pftData?.pre_physical_fitness_test?.finishedTestIndex) &&
+    isFinishedTestIndexes(pftData?.post_physical_fitness_test?.finishedTestIndex)
   ) {
     await supabase
       .from('quiz_progress')
@@ -57,7 +57,7 @@ export async function fetchQuizzesOfUser(user: User): Promise<QuizWithProgress[]
     .eq('quiz_progress.user_id', user.id);
 
   if (error) throw error;
-  return (data ?? []) as QuizWithProgress[];
+  return (data ?? []) as unknown as QuizWithProgress[];
 }
 
 export async function fetchQuizzes(): Promise<QuizWithProgress[]> {
@@ -75,7 +75,7 @@ export async function getQuestionsFromQuiz(quizId: number | string): Promise<Qui
   const { data, error } = await supabase
     .from('quiz')
     .select('questions')
-    .eq('id', quizId)
+    .eq('id', Number(quizId))
     .single();
   if (error) throw error;
   const quiz = data as { questions: QuizQuestionSet };
@@ -87,7 +87,7 @@ export async function getQuestionsFromQuizProgressIfExists(quizId: number | stri
   const { data, error } = await supabase
     .from('quiz_progress')
     .select('questions_shuffled')
-    .eq('quiz_id', quizId)
+    .eq('quiz_id', Number(quizId))
     .eq('user_id', user.id)
     .single();
   if (error) {
@@ -99,9 +99,16 @@ export async function getQuestionsFromQuizProgressIfExists(quizId: number | stri
 
 function shuffleQuizQuestionsAndChoices(questions: QuizQuestion[]): QuizQuestion[] {
   return shuffleArray(questions).map((question) => {
-    if (question.type === 'identification') return question;
+    if (question.type !== 'multiple-choice') return question;
     return { ...question, choices: shuffleArray(question.choices ?? []) };
   });
+}
+
+function normalizeQuizQuestionDurations(questions: QuizQuestion[]): QuizQuestion[] {
+  return questions.map((question) => ({
+    ...question,
+    duration: getQuizQuestionDuration(question),
+  }));
 }
 
 export async function fetchQuizQuestions(quizId: number | string): Promise<QuizQuestion[]> {
@@ -116,7 +123,9 @@ export async function fetchQuizQuestions(quizId: number | string): Promise<QuizQ
   const userType = userData?.user_type ?? 'student';
 
   if (!questions) {
-    questions = shuffleQuizQuestionsAndChoices(await getQuestionsFromQuiz(quizId));
+    questions = normalizeQuizQuestionDurations(
+      shuffleQuizQuestionsAndChoices(await getQuestionsFromQuiz(quizId)),
+    );
     if (userType === 'student') {
       await supabase
         .from('quiz_progress')
@@ -125,8 +134,10 @@ export async function fetchQuizQuestions(quizId: number | string): Promise<QuizQ
           questions_shuffled: questions,
         })
         .eq('user_id', user.id)
-        .eq('quiz_id', quizId);
+        .eq('quiz_id', Number(quizId));
     }
+  } else {
+    questions = normalizeQuizQuestionDurations(questions);
   }
 
   return questions;
@@ -137,7 +148,7 @@ export async function fetchQuizStateIfExists(quizId: number | string): Promise<Q
   const { data, error } = await supabase
     .from('quiz_progress')
     .select('user_id, quiz_id, question_index, score, points, status, remaining_time, questions_answered, start_time, total_items')
-    .eq('quiz_id', quizId)
+    .eq('quiz_id', Number(quizId))
     .eq('user_id', user.id)
     .single();
   if (error) {
@@ -152,7 +163,7 @@ export async function getUserRanking(quizId: number | string): Promise<number | 
   const { data, error } = await supabase
     .from('quiz_progress')
     .select('user_id, score')
-    .eq('quiz_id', quizId)
+    .eq('quiz_id', Number(quizId))
     .eq('status', 'Done')
     .order('points', { ascending: false });
   if (error) throw error;
@@ -166,7 +177,7 @@ export async function getUserRankings(quizIds: (number | string)[]): Promise<Map
   const { data, error } = await supabase
     .from('quiz_progress')
     .select('quiz_id, user_id, points')
-    .in('quiz_id', quizIds)
+    .in('quiz_id', quizIds.map(Number))
     .eq('status', 'Done')
     .order('points', { ascending: false });
   if (error) throw error;
@@ -192,7 +203,7 @@ export async function fetchLeaderboard(
   const { data, error } = await supabase
     .from('quiz_progress')
     .select('id, user_id, points, profile(full_name)')
-    .eq('quiz_id', quizId)
+    .eq('quiz_id', Number(quizId))
     .eq('status', 'Done')
     .order('points', { ascending: false })
     .limit(5);
@@ -204,11 +215,11 @@ export async function fetchLeaderboard(
   const leaderboardRows = data as Array<{
     user_id: string;
     points: number | null;
-    profile: Array<{ full_name: string | null }> | null;
+    profile: { full_name: string | null } | null;
   }>;
   return leaderboardRows.map((user, index) => ({
     rank: index + 1,
-    name: user.profile?.[0]?.full_name ?? '',
+    name: user.profile?.full_name ?? '',
     points: (user.points ?? 0).toLocaleString(),
     isCurrentUser: user.user_id === currentUser.id,
   }));

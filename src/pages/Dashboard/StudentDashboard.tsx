@@ -87,9 +87,11 @@ export default function StudentDashboard() {
 
   // PFT status
   const { data: pftData } = useQuery({
-    queryKey: pftKeys.session(userID ?? ''),
+    queryKey: pftKeys.status(userID ?? ''),
     queryFn: () => fetchStudentPftStatus(userID ?? ''),
     enabled: !!userID,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const joinMutation = useMutation({

@@ -10,85 +10,94 @@ import CalculatorInput from '@/components/health-calculators/CalculatorInput';
 import Content from '@/components/health-calculators/Content';
 import RowContainer from '@/components/health-calculators/RowContainer';
 import RadioButton from '@/components/health-calculators/RadioButtons';
+import GenderSelector from '@/components/health-calculators/GenderSelector';
 import Citation from '@/components/Citations';
-import type { WaterIntakeActivityLevel, WeightUnit } from '@/types/calculations';
+import type { Gender, WaterIntakeActivityLevel, WeightUnit } from '@/types/calculations';
+import {
+  getWaterIntakeCategory,
+  isValidWaterIntakeNumber,
+} from '@/utilities/water-intake';
 
 export default function WaterIntakeCalculator () {
   const [weightUnit, setWeightUnit] = useState<WeightUnit>('kg');
   const [weight, setWeight] = useState('');
-  const [waterIntakeCategory, setWaterIntakeCategory] = useState('...');
+  const [age, setAge] = useState('');
+  const [gender, setGender] = useState<Gender | ''>('');
+  const [isTropical, setIsTropical] = useState('No');
   const [activityLevel, setActivityLevel] = useState<WaterIntakeActivityLevel>(
     'Sedentary (Little to No Exercise)',
   );
-  const [intakeResult, setIntakeResult] = useState<number | ''>('');
+  const [intakeResult, setIntakeResult] = useState('');
   const [intakeMedicalInterpretation, setIntakeMedicalInterpretation] =
     useState(
       'After calculating your daily water needs, this section will provide a general medical interpretation of your result. It will explain how your hydration level may affect bodily functions, such as energy, digestion, and circulation. This is intended as educational guidance and not a clinical diagnosis.',
     );
-  const [IntakeStatisticalInterpretation, setIntakeStatisticalInterpretation] =
+  const [intakeStatisticalInterpretation, setIntakeStatisticalInterpretation] =
     useState(
-      'Once your result is calculated, this section will show how your water intake compares to typical hydration ranges for your weight and activity level. It gives context for whether your current or recommended intake aligns with common population averages.',
+       'Once your result is calculated, this section will explain how the recommendation reflects your age, gender, weight, activity level, and tropical climate setting.',
     );
 
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const { WaterIntake } = highlightedData;
-  const {
-    description,
-    instructions,
-    statisticalInterpretation,
-    medicalInterpretation,
-  } = WaterIntake;
-
+  const { description, instructions, statisticalInterpretation, medicalInterpretation } = WaterIntake;
   const weightUnits = ['kg', 'lbs'];
-  const getWaterIntakeCategory = (waterIntake: number): string => {
-    if (waterIntake < 2.3) return 'below the recommended intake';
-    if (waterIntake > 3.7) return 'above the recommended intake';
-    return 'within the recommended intake';
+
+  const formatIntake = (intake: string) => {
+    if (!intake) return [];
+
+    const values = intake
+      .replace(' oz', '')
+      .split('-')
+      .map(Number);
+    const formatRange = (unit: (ounces: number) => number | string) =>
+      values.length === 2
+        ? `${unit(values[0])}-${unit(values[1])}`
+        : unit(values[0]);
+
+    return [
+      { label: 'Ounces', value: intake },
+      { label: 'Milliliters', value: `${formatRange(ounces => Math.round(ounces * 29.5735))} ml` },
+      { label: 'Cups', value: `${formatRange(ounces => Math.round(ounces / 8))}` },
+    ];
   };
 
   const getWaterIntakeInterpretations = (category: string) => {
-    const categoryKey = category
-      .toLowerCase()
-      .replace(' the recommended intake', '');
     return {
-      medical:
-        medicalInterpretation[
-          categoryKey as keyof typeof medicalInterpretation
-        ] || 'No interpretation available',
-      statistical:
-        statisticalInterpretation[
-          categoryKey as keyof typeof statisticalInterpretation
-        ] || 'No interpretation available',
+      medical: medicalInterpretation[category as keyof typeof medicalInterpretation] || 'No interpretation available',
+      statistical: statisticalInterpretation[category as keyof typeof statisticalInterpretation] || 'No interpretation available',
     };
   };
 
-  const getIntakeCategoryColor = (categoryKey: string): string | undefined => {
-    switch (categoryKey) {
-      case 'below the recommended intake':
-      case 'above the recommended intake':
-        return 'text-yellow-500 mb-3';
-      case 'within the recommended intake':
-        return 'text-green-600 mb-3';
-    }
-  };
-
   const handleCalculate = () => {
-    if (!weight || Number(weight) <= 0) {
+    const weightValue = Number(weight);
+    const ageValue = Number(age);
+
+    if (!isValidWaterIntakeNumber(weight, Number.MIN_VALUE)) {
       toast.error('Please enter a valid weight value.');
+      return;
+    }
+    if (!age.trim() || !isValidWaterIntakeNumber(age, 0)) {
+      toast.error('Please enter a valid age.');
+      return;
+    }
+    if (ageValue >= 14 && !gender) {
+      toast.error('Please select a gender.');
       return;
     }
 
     const waterIntake = getWaterIntake(
-      parseFloat(weight),
+      weightValue,
+      ageValue,
+      gender,
       activityLevel,
       weightUnit,
+      isTropical === 'Yes',
     );
 
-    const category = getWaterIntakeCategory(waterIntake);
-    const interpretations = getWaterIntakeInterpretations(category);
-
     setIntakeResult(waterIntake);
-    setWaterIntakeCategory(category);
+    const interpretations = getWaterIntakeInterpretations(
+      getWaterIntakeCategory(waterIntake, ageValue, isTropical === 'Yes'),
+    );
     setIntakeMedicalInterpretation(interpretations.medical);
     setIntakeStatisticalInterpretation(interpretations.statistical);
 
@@ -104,13 +113,15 @@ export default function WaterIntakeCalculator () {
 
   const handleClear = () => {
     setWeight('');
+    setAge('');
+    setGender('');
+    setIsTropical('No');
     setIntakeResult('');
-    setWaterIntakeCategory('...');
     setIntakeMedicalInterpretation(
       'After calculating your daily water needs, this section will provide a general medical interpretation of your result. It will explain how your hydration level may affect bodily functions, such as energy, digestion, and circulation. This is intended as educational guidance and not a clinical diagnosis.',
     );
     setIntakeStatisticalInterpretation(
-      'Once your result is calculated, this section will show how your water intake compares to typical hydration ranges for your weight and activity level. It gives context for whether your current or recommended intake aligns with common population averages.',
+      'Once your result is calculated, this section will explain how the recommendation reflects your age, gender, weight, activity level, and tropical climate setting.',
     );
   };
 
@@ -146,12 +157,10 @@ export default function WaterIntakeCalculator () {
       <CalculatorDetails name='Water Intake Calculator' details={description} />
 
       <RowContainer>
-        <CalculatorContainer
-          heading='Water Intake Calculator'
-          onCalculate={handleCalculate}
-          onClear={handleClear}
-        >
+        <CalculatorContainer heading='Water Intake Calculator' onCalculate={handleCalculate} onClear={handleClear}>
           <div className='flex flex-col gap-3'>
+            <CalculatorInput label='Age' setValue={setAge} value={age} />
+            <GenderSelector gender={gender} setGender={setGender} />
             <CalculatorInput
               label='Weight'
               setUnit={(value) => setWeightUnit(value as WeightUnit)}
@@ -170,14 +179,19 @@ export default function WaterIntakeCalculator () {
               text='Activity Level'
               showBodyFat={false}
             />
+            <RadioButton
+              choices={['No', 'Yes']}
+              name='tropical-climate'
+              value={isTropical}
+              setValue={setIsTropical}
+              text='Tropical Climate'
+            />
           </div>
-        </CalculatorContainer>{' '}
+        </CalculatorContainer>
         <Container heading='Instructions'>
           <ol className='list-decimal text-justify font-content mx-2 mb-3 md:mb-5 text-xs md:text-base'>
             {instructions.map((instruction) => (
-              <li key={instruction}>
-                {renderHtml(instruction)}
-              </li>
+              <li key={instruction}>{renderHtml(instruction)}</li>
             ))}
           </ol>
         </Container>
@@ -190,24 +204,20 @@ export default function WaterIntakeCalculator () {
             {' '}
             Estimated Water Intake:{' '}
           </p>
-          <div className='mb-3 text-center text-xs md:text-base'>
-            <p className={getIntakeCategoryColor(waterIntakeCategory)}>
-              {intakeResult}L
-            </p>
-            You are {waterIntakeCategory}.{' '}
+          <div className='mb-3 flex flex-col gap-1 text-xs md:text-base'>
+            {formatIntake(intakeResult).map(({ label, value }) => (
+              <div className='flex justify-between gap-8' key={label}>
+                <span className='font-medium'>{label}</span>
+                <span>{value}</span>
+              </div>
+            ))}
           </div>
         </Container>
       </div>
 
       <div className='w-full flex flex-col gap-10 mt-10'>
-        <Content
-          content={intakeMedicalInterpretation}
-          title='Medical Interpretation'
-        />
-        <Content
-          content={IntakeStatisticalInterpretation}
-          title='Statistical Interpretation'
-        />
+        <Content content={intakeMedicalInterpretation} title='Medical Interpretation' />
+        <Content content={intakeStatisticalInterpretation} title='Statistical Interpretation' />
         <Citation citations={citations} title='References' />
       </div>
     </>

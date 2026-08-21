@@ -33,11 +33,11 @@ export async function fetchPftRecord(
     .from('physical_fitness_test')
     .select('pre_physical_fitness_test, post_physical_fitness_test')
     .eq('uuid', userId)
-    .single();
+    .maybeSingle();
 
   if (error) {
     logger.error('fetchPftRecord failed', error, { userId });
-    return null;
+    throw error;
   }
 
   return data as PFTRecordRow;
@@ -70,12 +70,12 @@ export async function fetchPftSummaryForViewer(
         .from('profile')
         .select('full_name, email')
         .eq('uuid', studentId)
-        .single<PFTProfileRow>(),
+        .maybeSingle<PFTProfileRow>(),
       supabase
         .from('physical_fitness_test')
         .select('pre_physical_fitness_test, post_physical_fitness_test')
         .eq('uuid', studentId)
-        .single<PFTRecordRow>(),
+        .maybeSingle<PFTRecordRow>(),
     ]);
 
   if (profileError) {
@@ -86,12 +86,16 @@ export async function fetchPftSummaryForViewer(
     throw pftError;
   }
 
+  if (!profile) {
+    return null;
+  }
+
   return {
     full_name: profile.full_name,
     email: profile.email,
     pft_data:
       testType === 'pre-test'
-        ? pftRecord.pre_physical_fitness_test
-        : pftRecord.post_physical_fitness_test,
+        ? pftRecord?.pre_physical_fitness_test ?? null
+        : pftRecord?.post_physical_fitness_test ?? null,
   };
 }

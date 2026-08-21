@@ -32,10 +32,10 @@ export default function LecturePage() {
       const { data, error } = await supabase
         .from('lecture_progress')
         .select('lecture_progress')
-        .eq('uuid', userId)
-        .single();
+        .eq('uuid', userId ?? '')
+        .maybeSingle();
       if (error) throw error;
-      if (!data?.lecture_progress) return LectureProgress();
+      if (!data?.lecture_progress?.length) return LectureProgress();
       return data.lecture_progress;
     },
     enabled: !!userId,
@@ -43,6 +43,9 @@ export default function LecturePage() {
 
   const pendingMutation = useMutation({
     mutationFn: async (): Promise<LectureProgressItem[]> => {
+      if (!userId) {
+        throw new Error('A user is required to update lecture progress.');
+      }
       const updated = lectureProgress.map((progressItem: LectureProgressItem) =>
         progressItem.key === selectedLessonNumber
           ? { ...progressItem, status: 'Pending' as const }
@@ -51,8 +54,7 @@ export default function LecturePage() {
 
       const { error } = await supabase
         .from('lecture_progress')
-        .update({ lecture_progress: updated })
-        .eq('uuid', userId);
+        .upsert({ uuid: userId, lecture_progress: updated }, { onConflict: 'uuid' });
 
       if (error) {
         throw error;
@@ -89,18 +91,26 @@ export default function LecturePage() {
 
   const finishMutation = useMutation({
     mutationFn: async (): Promise<LectureProgressItem[]> => {
+      if (!userId) {
+        throw new Error('A user is required to finish a lecture.');
+      }
+      const currentUserId = userId;
+
       const updated = lectureProgress.map((p: LectureProgressItem) =>
         p.key === selectedLessonNumber ? { ...p, status: 'Done' as const } : p,
       );
-      await supabase
+      const { error: lectureProgressError } = await supabase
         .from('lecture_progress')
-        .update({ lecture_progress: updated })
-        .eq('uuid', userId);
+        .upsert({ uuid: userId, lecture_progress: updated }, { onConflict: 'uuid' });
+
+      if (lectureProgressError) {
+        throw lectureProgressError;
+      }
 
       const { data: existingQuizProgress, error: quizProgressError } = await supabase
         .from('quiz_progress')
         .select('id')
-        .eq('user_id', userId)
+        .eq('user_id', userId ?? '')
         .eq('quiz_id', selectedLessonNumber)
         .maybeSingle();
 
@@ -111,13 +121,14 @@ export default function LecturePage() {
       if (!existingQuizProgress) {
         const { error: insertError } = await supabase
           .from('quiz_progress')
-          .insert([
+          .upsert(
             {
-              user_id: userId,
+              user_id: currentUserId,
               quiz_id: selectedLessonNumber,
               status: 'Pending' as const,
             },
-          ]);
+            { onConflict: 'user_id, quiz_id' },
+          );
 
         if (insertError) {
           throw insertError;

@@ -14,13 +14,18 @@ export interface PFTRecordRow {
   post_physical_fitness_test: PFTSessionData | null;
 }
 
-export function isFinishedTestSession(session: PFTSessionData | null): boolean {
-  const finishedIndexes = session?.finishedTestIndex ?? [];
-
+export function isFinishedTestIndexes(
+  finishedIndexes: number[] | null | undefined,
+): boolean {
+  const indexes = finishedIndexes ?? [];
   return (
-    finishedIndexes.length > 0 &&
-    !finishedIndexes.includes(-1)
+    indexes.length === PhysicalFitnessData.finishedTestIndex.length &&
+    indexes.every((index, position) => index === position)
   );
+}
+
+export function isFinishedTestSession(session: PFTSessionData | null): boolean {
+  return isFinishedTestIndexes(session?.finishedTestIndex);
 }
 
 export function getNextUnfinishedTestIndex(finishedIndexes: number[]): number {

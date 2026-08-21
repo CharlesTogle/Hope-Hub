@@ -23,7 +23,7 @@ export default function QuizQuestionReview({
         {index + 1}. {questionData.question}
       </p>
       <hr className="border-1 border-black/30 my-3" />
-      {question?.type === 'identification' ? (
+      {question?.type !== 'multiple-choice' ? (
         <div className="my-1">
           <div className="flex items-center gap-x-2">
             <div

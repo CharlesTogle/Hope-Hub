@@ -1,6 +1,7 @@
 import supabase from '@/client/supabase';
 import type { ClassCode, DashboardQuizRow, ProgressStats, StudentPftStatus } from '@/types/student';
 import { logger } from '@/utilities/logger';
+import { isFinishedTestIndexes } from '@/lib/pft-session';
 
 export async function fetchLectureProgressSummary(
   userId: string,
@@ -9,14 +10,14 @@ export async function fetchLectureProgressSummary(
     .from('lecture_progress')
     .select('lecture_progress')
     .eq('uuid', userId)
-    .single();
+    .maybeSingle();
 
   if (error) {
     logger.error('fetchLectureProgressSummary failed', error, { userId });
     throw error;
   }
 
-  const lectures = data.lecture_progress || [];
+  const lectures = data ? data.lecture_progress || [] : [];
   let completed = 0;
   let incomplete = 0;
   let pending = 0;
@@ -91,13 +92,20 @@ export async function fetchStudentQuizRows(
   for (let i = 1; i <= quizCount; i++) {
     const quiz = data?.find((item) => item.quiz_id === i);
     rows.push(
-      quiz ?? {
+      quiz
+        ? {
+            ...quiz,
+            score: quiz.score ?? undefined,
+            total_items: quiz.total_items ?? undefined,
+            date_taken: quiz.date_taken ?? undefined,
+          }
+        : {
         quiz_id: i,
         status: 'Incomplete',
         score: undefined,
         total_items: undefined,
         date_taken: undefined,
-      },
+          },
     );
   }
 
@@ -128,21 +136,16 @@ export async function fetchStudentPftStatus(
     .from('physical_fitness_test')
     .select('pre_physical_fitness_test, post_physical_fitness_test')
     .eq('uuid', userId)
-    .single();
+    .maybeSingle();
 
   if (error) {
     logger.error('fetchStudentPftStatus failed', error, { userId });
     throw error;
   }
 
-  const checkFinished = (column: { finishedTestIndex?: number[] } | null) => {
-    const indexes = column?.finishedTestIndex;
-    return !!(indexes && indexes.includes(indexes.length - 1));
-  };
-
   return {
-    preFinished: checkFinished(data.pre_physical_fitness_test),
-    postFinished: checkFinished(data.post_physical_fitness_test),
+    preFinished: isFinishedTestIndexes(data?.pre_physical_fitness_test?.finishedTestIndex),
+    postFinished: isFinishedTestIndexes(data?.post_physical_fitness_test?.finishedTestIndex),
   };
 }
 

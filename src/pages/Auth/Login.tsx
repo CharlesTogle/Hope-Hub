@@ -88,9 +88,11 @@ export default function Login() {
     try {
       setRememberMePreference(state.rememberMe);
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email: state.email,
-        password: state.password,
+      const { data, error } = await supabase.functions.invoke('login', {
+        body: {
+          email: state.email,
+          password: state.password,
+        },
       });
 
       if (error) {
@@ -101,6 +103,9 @@ export default function Login() {
         });
         return;
       }
+
+      const { error: sessionError } = await supabase.auth.setSession(data.data.session);
+      if (sessionError) throw sessionError;
 
       const authSession = await fetchAuthenticatedProfile();
 
