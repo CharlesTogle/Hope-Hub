@@ -31,7 +31,7 @@ export default function Lectures() {
       const { data, error } = await supabase
         .from('lecture_progress')
         .select('lecture_progress')
-        .eq('uuid', userId)
+        .eq('uuid', userId ?? '')
         .single();
       if (error) throw error;
       if (!data?.lecture_progress) return LectureProgress();

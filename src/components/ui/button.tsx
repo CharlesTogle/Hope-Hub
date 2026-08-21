@@ -14,14 +14,14 @@ function Button({
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
   }) {
-  const Comp = asChild ? Slot : 'button';
+  const classNames = cn(buttonVariants({ variant, size, className }));
 
-  return (
-    <Comp
-      data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
-      {...props} />
-  );
+  if (asChild) {
+    const SlotButton = Slot as unknown as React.ComponentType<React.ComponentProps<'button'>>;
+    return <SlotButton data-slot="button" className={classNames} {...props} />;
+  }
+
+  return <button data-slot="button" className={classNames} {...props} />;
 }
 
 export { Button };

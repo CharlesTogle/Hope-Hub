@@ -23,7 +23,7 @@ export async function submitAnswer(quizState: QuizState): Promise<void> {
       questions_answered: questionsAnswered,
     })
     .eq('user_id', user.id)
-    .eq('quiz_id', quizId);
+    .eq('quiz_id', Number(quizId));
 
   if (error) throw error;
 }
@@ -41,7 +41,7 @@ export async function markQuizAsDone(quizState: QuizState): Promise<void> {
       end_time: new Date().toISOString(),
     })
     .eq('user_id', user.id)
-    .eq('quiz_id', quizId);
+    .eq('quiz_id', Number(quizId));
   if (error) throw error;
 }
 
@@ -51,6 +51,6 @@ export async function updateRemainingTime(quizId: number | string, remainingTime
     .from('quiz_progress')
     .update({ remaining_time: Math.max(0, remainingTime) })
     .eq('user_id', user.id)
-    .eq('quiz_id', quizId);
+    .eq('quiz_id', Number(quizId));
   if (error) throw error;
 }

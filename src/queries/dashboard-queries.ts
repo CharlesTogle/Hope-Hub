@@ -92,13 +92,20 @@ export async function fetchStudentQuizRows(
   for (let i = 1; i <= quizCount; i++) {
     const quiz = data?.find((item) => item.quiz_id === i);
     rows.push(
-      quiz ?? {
+      quiz
+        ? {
+            ...quiz,
+            score: quiz.score ?? undefined,
+            total_items: quiz.total_items ?? undefined,
+            date_taken: quiz.date_taken ?? undefined,
+          }
+        : {
         quiz_id: i,
         status: 'Incomplete',
         score: undefined,
         total_items: undefined,
         date_taken: undefined,
-      },
+          },
     );
   }
 
