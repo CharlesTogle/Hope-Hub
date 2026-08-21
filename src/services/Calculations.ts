@@ -345,34 +345,45 @@ export function getIBW(
 
 export function getWaterIntake(
   weight: number,
+  age: number,
+  gender: Gender | '',
   activityLevel: WaterIntakeActivityLevel,
   weightUnit: WeightUnit,
-): number {
-  const weightInKg = weightUnit === 'lbs' ? convertLbsToKg(weight) : weight;
+  isTropical: boolean,
+): string {
+  const weightInPounds = weightUnit === 'lbs' ? weight : weight / 0.4536;
 
-  let waterIntake = weightInKg * 0.033;
+  if (age < 1) return '4-6 oz';
+  if (age < 4) return '40 oz';
+  if (age < 9) return '50 oz';
+  if (age < 14) return '60 oz';
+  if (!gender) throw new Error('Gender is required for adults.');
+
+  let waterIntake = weightInPounds * (gender === 'male' ? 0.67 : 0.5);
 
   switch (activityLevel) {
     case 'Sedentary (Little to No Exercise)':
       waterIntake += 0;
       break;
     case 'Light Exercise (1-2 times/week)':
-      waterIntake += 0.2;
+      waterIntake += 6;
       break;
     case 'Moderate Exercise (3-5 times/week)':
-      waterIntake += 0.35;
+      waterIntake += 12;
       break;
     case 'High Exercise (6-7 times/week)':
-      waterIntake += 0.5;
+      waterIntake += 18;
       break;
     case 'Extreme (2x per day)':
-      waterIntake += 0.7;
+      waterIntake += 24;
       break;
     default:
       throw new Error('Unknown activity level. Please select a valid option.');
   }
 
-  return parseFloat(waterIntake.toFixed(2));
+  if (isTropical) waterIntake += 10;
+
+  return `${waterIntake.toFixed(2)} oz`;
 }
 
 export function getBodyFatPercentage(

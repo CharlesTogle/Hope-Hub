@@ -51,10 +51,13 @@ export const CalculatorData = {
     ],
   },
   WaterIntake: {
-    description: 'The Daily Water Intake Calculator estimates how much water you should drink each day based on your weight and activity level. These two inputs are among the most important for determining hydration needs. By entering this information, you’ll receive a personalized water intake recommendation designed to support everyday health and well-being. This calculator uses a widely accepted method: estimating baseline fluid needs at approximately 33 milliliters per kilogram of body weight, then adjusting based on your level of physical activity. The more you exercise or sweat, the more water your body requires to maintain optimal balance. Using this tool can help you become more aware of how your daily habits influence hydration. It promotes better energy levels, physical performance, and general health by encouraging consistent fluid intake tailored to your body. While the recommendation is not a strict rule, it can be a helpful starting point for building better hydration habits.',
+    description: 'The Daily Water Intake Calculator estimates a personalized daily water recommendation using age, gender, weight, activity level, and tropical climate exposure. Adult recommendations use weight in pounds and adjust for gender, exercise, and tropical conditions; children receive age-based recommendations. The result is general educational guidance, not a clinical prescription.',
     instructions: [
+      'Enter your age in years.',
+      'Choose your gender (male or female). Gender is used for ages 14 and older.',
       'Enter your weight in your prefered unit (kg, lbs). You can select units by selecting the drop-down icon.',
       'Choose the option that best describes your typical weekly physical activity. (default: Sedentary (Little to No Exercise))',
+      'Choose whether you live in a tropical climate.',
       'Click calculate.',
       'Read results below. Medical and statistical interpretations are also viewable. All outputs are for informational use only and not a substitute for professional medical advice.',
     ],
@@ -157,23 +160,23 @@ export const highlightedData = {
   },
   WaterIntake: {
     ...CalculatorData.WaterIntake,
-    description: highlightKeywords(CalculatorData.IBW.description, keywords),
-    instructions: CalculatorData.IBW.instructions.map(instr => highlightKeywords(instr, keywords)),
+    description: highlightKeywords(CalculatorData.WaterIntake.description, keywords),
+    instructions: CalculatorData.WaterIntake.instructions.map(instr => highlightKeywords(instr, keywords)),
     statisticalInterpretation: {
-      below:
-        'Your estimated water intake is below the average range typically observed in healthy adults with similar weight and activity levels. Statistically, low fluid intake is associated with more frequent occurrences of fatigue, headaches, and reduced cognitive performance. In population studies, chronic underhydration correlates with greater risks of urinary tract infections and kidney stone formation.',
+      'age-based':
+        'For children, this recommendation is based on age-specific hydration guidance rather than adult comparison ranges. Children may need additional fluids during heat, illness, or physical activity.',
+      tropical:
+        'This recommendation includes an additional tropical-climate allowance to account for increased fluid loss from heat and humidity. Individual needs may still vary with exertion and sweating.',
       within:
-        'Your water intake falls within a statistically typical range for healthy hydration across a broad sample of the population. Individuals in this range are less likely to experience symptoms of dehydration and more likely to maintain physical and mental performance throughout the day.',
-      above:
-        'Your reported or estimated water intake exceeds what is typical for people of your weight and activity level. While this may be appropriate in cases of high heat, physical exertion, or specific health needs, most people do not require this volume daily. Population data suggests higher-than-average intake is safe for healthy individuals, but sustained overhydration without medical need is uncommon.'
+        'This is a personalized adult recommendation based on weight, gender, activity level, and climate. It is a practical starting point, not a strict clinical target.',
     },
     medicalInterpretation: {
-      below:
-        'Inadequate hydration can compromise vital functions including thermoregulation, waste elimination, joint lubrication, and nutrient absorption. Chronically low water intake increases the risk of constipation, kidney stones, and reduced blood pressure regulation. It may also contribute to fatigue and decreased alertness. Medical attention may be warranted if low intake persists or is due to limited access or illness.',
+      'age-based':
+        'Children have different hydration needs from adults. This age-based recommendation is general educational guidance and should be adjusted for heat, illness, exercise, and advice from a healthcare professional.',
+      tropical:
+        'The tropical-climate adjustment supports fluid replacement in hot and humid conditions. Drink regularly and increase fluids during strenuous activity or heavy sweating; people with medical fluid restrictions should follow clinical advice.',
       within:
-        'Maintaining daily hydration within this range supports all major bodily systems, including cardiovascular, renal, digestive, and neurological health. It helps regulate temperature, sustain energy levels, and promote toxin clearance. This intake range is considered optimal for most healthy adults under standard environmental and activity conditions.',
-      above:
-        'Excessive fluid intake can occasionally lead to a dilution of blood sodium levels, a condition known as hyponatremia, particularly in endurance athletes or individuals with specific health conditions. However, the kidneys of healthy individuals typically manage excess fluid effectively. High intake may be appropriate in hot climates or during vigorous exercise, but caution is advised for individuals on fluid restrictions or with kidney-related conditions.'
+        'This adult recommendation supports hydration for normal bodily functions and accounts for weight, gender, activity level, and climate. It is general guidance rather than a clinical prescription.',
     }
   },
   BodyFatPercentage: {
