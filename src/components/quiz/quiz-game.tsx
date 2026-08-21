@@ -152,7 +152,7 @@ export default function QuizGame({
     }, 1000);
   }
 
-  const isIdentification = currentQuestion.type === 'identification';
+  const isIdentification = currentQuestion.type !== 'multiple-choice';
 
   return isLoading ? (
     <div className="flex justify-center items-center h-[60vh] p-4">

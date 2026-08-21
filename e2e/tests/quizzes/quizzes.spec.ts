@@ -155,6 +155,15 @@ test.describe('Quiz Page', () => {
     },
   ];
 
+  const mockComputationQuestions = (): QuizQuestion[] => [
+    {
+      type: 'computation',
+      question: 'Calculate the training load.',
+      answer: '100',
+      duration: 30,
+    },
+  ];
+
   test('quiz page loads for a pending quiz', async ({
     page,
     studentUser,
@@ -195,6 +204,27 @@ test.describe('Quiz Page', () => {
 
     const pageContent = await page.textContent('body');
     expect(pageContent).toBeTruthy();
+  });
+
+  test('computation questions have five minutes', async ({
+    page,
+    studentUser,
+    setAuthSession,
+    mockQuizData,
+  }) => {
+    const quizId = 1;
+
+    await setAuthSession(studentUser);
+    await mockQuizData({
+      quizzes: [createMockQuiz({ id: quizId, questions: mockComputationQuestions() })],
+      progress: [createMockQuizProgress({ quiz_id: quizId, status: 'Pending' })],
+    });
+
+    await page.goto(APP_ROUTES.quizzes.quiz(quizId));
+    await page.waitForLoadState('load');
+
+    await expect(page.getByText('300 seconds')).toBeVisible();
+    await expect(page.getByPlaceholder('Answer')).toBeVisible();
   });
 
   test('completed quiz shows results', async ({

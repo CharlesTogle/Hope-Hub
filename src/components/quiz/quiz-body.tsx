@@ -67,7 +67,7 @@ export default function QuizBody({
               {question.question}
             </p>
             <hr className="w-[85%] lg:w-[75%] border-1 border-white mt-8 mb-4" />
-            {question.type === 'identification' ? (
+            {question.type !== 'multiple-choice' ? (
               <Identification
                 handleAnswer={handleAnswer}
                 isDisabled={isAnswerLocked}

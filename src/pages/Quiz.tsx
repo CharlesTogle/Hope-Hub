@@ -75,7 +75,7 @@ function QuestionCard({
         {index + 1}. {question.question}
       </p>
       <hr className="border-1 border-black/30 my-3" />
-      {question.type === 'identification' ? (
+      {question.type !== 'multiple-choice' ? (
         <div className="my-1">
           <p>
             <span className="font-semibold text-green">Answer: </span>
