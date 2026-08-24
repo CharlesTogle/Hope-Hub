@@ -7,7 +7,7 @@ import ResultSection from './ResultSection';
 import TipsAndInterpretation from './TipsAndInterpretation';
 import { useMobile } from '@/hooks/useMobile';
 import { useQueryClient } from '@tanstack/react-query';
-import { pftKeys } from '@/lib/query-keys';
+import { pftKeys, quizKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { usePhysicalFitnessStore } from '@/store/physical-fitness-store';
 import { PFT_TIMEOUT_SECONDS } from '@/lib/pft-session';
@@ -287,6 +287,7 @@ export default function PhysicalFitnessTest({
       setSessionData(updatedData);
       await savePftSession(userId, testType, updatedData);
       queryClient.invalidateQueries({ queryKey: pftKeys.session(userId) });
+      queryClient.invalidateQueries({ queryKey: quizKeys.list() });
     },
     [setSessionData, testType, userId, queryClient],
   );

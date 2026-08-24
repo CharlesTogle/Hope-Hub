@@ -6,6 +6,7 @@ import {
   getNextUnfinishedTestIndex,
   derivePftStatus,
   resetPftProgress,
+  isPftQuizUnlocked,
 } from '@/lib/pft-session';
 import type { PFTSessionData } from '@/types/physical-fitness';
 import type { PFTRecordRow } from '@/lib/pft-session';
@@ -88,6 +89,15 @@ describe('derivePftStatus', () => {
       post_physical_fitness_test: done,
     };
     expect(derivePftStatus(record)).toEqual({ isTaken: true, testType: 'pre_physical_fitness_test' });
+  });
+});
+
+describe('isPftQuizUnlocked', () => {
+  const done = { ...PhysicalFitnessData, finishedTestIndex: finishedTestIndexes };
+
+  it('keeps the PFT quiz locked until both tests are complete', () => {
+    expect(isPftQuizUnlocked(done, null)).toBe(false);
+    expect(isPftQuizUnlocked(done, done)).toBe(true);
   });
 });
 

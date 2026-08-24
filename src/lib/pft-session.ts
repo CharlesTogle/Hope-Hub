@@ -28,6 +28,13 @@ export function isFinishedTestSession(session: PFTSessionData | null): boolean {
   return isFinishedTestIndexes(session?.finishedTestIndex);
 }
 
+export function isPftQuizUnlocked(
+  preSession: PFTSessionData | null,
+  postSession: PFTSessionData | null,
+): boolean {
+  return isFinishedTestSession(preSession) && isFinishedTestSession(postSession);
+}
+
 export function getNextUnfinishedTestIndex(finishedIndexes: number[]): number {
   const nextIndex = finishedIndexes.findIndex((index) => index === -1);
   return nextIndex === -1 ? 0 : nextIndex;

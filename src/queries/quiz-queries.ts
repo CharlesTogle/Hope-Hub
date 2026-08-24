@@ -10,7 +10,7 @@ import type {
 } from '@/types/quiz';
 import type { User } from '@supabase/supabase-js';
 import { logger } from '@/utilities/logger';
-import { isFinishedTestIndexes } from '@/lib/pft-session';
+import { isPftQuizUnlocked } from '@/lib/pft-session';
 import { getQuizQuestionDuration } from '@/lib/quiz-timing';
 
 export async function getCurrentUser(): Promise<User> {
@@ -36,8 +36,10 @@ export async function fetchQuizzesOfUser(user: User): Promise<QuizWithProgress[]
     .maybeSingle();
 
   if (
-    isFinishedTestIndexes(pftData?.pre_physical_fitness_test?.finishedTestIndex) &&
-    isFinishedTestIndexes(pftData?.post_physical_fitness_test?.finishedTestIndex)
+    isPftQuizUnlocked(
+      pftData?.pre_physical_fitness_test ?? null,
+      pftData?.post_physical_fitness_test ?? null,
+    )
   ) {
     await supabase
       .from('quiz_progress')
