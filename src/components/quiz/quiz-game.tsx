@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { calculatePoints } from '@/utilities/utils';
 import { submitAnswer, markQuizAsDone } from '@/mutations/quiz-mutations';
 import { fetchLeaderboard } from '@/queries/quiz-queries';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { quizKeys } from '@/lib/query-keys';
 import { useQuizStore } from '@/store/quiz-store';
 import { logger } from '@/utilities/logger';
@@ -33,6 +33,7 @@ export default function QuizGame({
   const remainingTime = useQuizStore((state) => state.remainingTime);
   const setQuizState = useQuizStore((state) => state.setQuizState);
   const setIdentificationAnswer = useQuizStore((state) => state.setIdentificationAnswer);
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [isAnswerLocked, setIsAnswerLocked] = useState(false);
   const [shouldShowPoints, setShouldShowPoints] = useState(false);
@@ -49,13 +50,13 @@ export default function QuizGame({
     staleTime: 0,
   });
 
-  if (!currentQuestion) {
-    return <Loading />;
-  }
-
   useEffect(() => {
     return () => clearTimeout(answerTimeoutRef.current ?? undefined);
   }, []);
+
+  if (!currentQuestion) {
+    return <Loading />;
+  }
 
   function handleAnswerSelected(
     answer: QuizChoice | string,
@@ -139,6 +140,7 @@ export default function QuizGame({
           };
 
           await markQuizAsDone(nextQuizState);
+          void queryClient.invalidateQueries({ queryKey: quizKeys.list() });
         }
 
         setQuizState(nextQuizState);
@@ -154,11 +156,7 @@ export default function QuizGame({
 
   const isIdentification = currentQuestion.type !== 'multiple-choice';
 
-  return isLoading ? (
-    <div className="flex justify-center items-center h-[60vh] p-4">
-      <Loading />
-    </div>
-  ) : (
+  return (
     <div id="quiz" className="flex flex-col w-[95%] lg:w-5/6 mx-auto mb-4 relative">
       <div className="flex items-start justify-between pt-8">
         <div>
@@ -171,21 +169,6 @@ export default function QuizGame({
           </h2>
           <hr className="w-[60%] border-1 border-primary-yellow mt-2 mb-3" />
         </div>
-        {quizState.status === 'Pending' && (
-          <Timer
-            key={quizState.questionIndex}
-            duration={shouldShowPoints ? remainingTime : quizState.remainingTime}
-            color="red"
-            onSyncError={handleTimerSyncError}
-            onTimerEnd={() => {
-              handleAnswerSelected(
-                isIdentification ? identificationAnswer : '',
-                false,
-              );
-              setIdentificationAnswer('');
-            }}
-          />
-        )}
       </div>
       {timerSyncError && (
         <p role='status' className='text-red text-sm'>
@@ -203,6 +186,23 @@ export default function QuizGame({
           totalItems={questions.length}
           showPoints={shouldShowPoints}
           points={quizState.currentQuestionPoints}
+          timer={
+            quizState.status === 'Pending' ? (
+              <Timer
+                key={quizState.questionIndex}
+                duration={shouldShowPoints ? remainingTime : quizState.remainingTime}
+                color="red"
+                onSyncError={handleTimerSyncError}
+                onTimerEnd={() => {
+                  handleAnswerSelected(
+                    isIdentification ? identificationAnswer : '',
+                    false,
+                  );
+                  setIdentificationAnswer('');
+                }}
+              />
+            ) : undefined
+          }
         />
       ) : (
         <QuizResults

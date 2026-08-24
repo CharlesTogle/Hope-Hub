@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import Identification from '@/components/quiz/identification';
 import MultipleChoice from '@/components/quiz/multiple-choice';
 import type { QuizChoice, QuizQuestion } from '@/types/quiz';
+import type { ReactNode } from 'react';
 
 interface QuizBodyProps {
   index: number;
@@ -13,6 +14,7 @@ interface QuizBodyProps {
   totalItems: number;
   showPoints: boolean;
   points: number;
+  timer?: ReactNode;
 }
 
 export default function QuizBody({
@@ -24,6 +26,7 @@ export default function QuizBody({
   totalItems,
   showPoints,
   points,
+  timer,
 }: QuizBodyProps) {
   return (
     <div className="flex flex-col items-center justify-center w-full h-full relative">
@@ -34,6 +37,11 @@ export default function QuizBody({
         className="flex flex-col justify-center items-center rounded-2xl w-full lg:min-h-[90vh] z-10 bg-cover bg-center bg-no-repeat p-3 lg:p-10 text-xl lg:text-2xl text-white font-content relative"
         style={{ backgroundImage: `url(${QuizBackground})` }}
       >
+        {timer && (
+          <div className="absolute top-4 right-4 z-20 rounded-full bg-white px-3 py-2 shadow-md">
+            {timer}
+          </div>
+        )}
         <h3 className="my-5 lg:my-7 text-3xl">
           {index + 1}/{totalItems}
         </h3>
