@@ -3,6 +3,7 @@ interface ErrorMessageProps {
   description: string;
   onRetry?: () => void;
   onBack?: () => void;
+  backLabel?: string;
 }
 
 export default function ErrorMessage({
@@ -10,6 +11,7 @@ export default function ErrorMessage({
   description,
   onRetry,
   onBack,
+  backLabel = 'Go back',
 }: ErrorMessageProps) {
   return (
     <section
@@ -35,7 +37,7 @@ export default function ErrorMessage({
               className='px-5 py-2 border border-accent-blue text-accent-blue rounded-sm hover:brightness-90'
               onClick={onBack}
             >
-              Go back
+              {backLabel}
             </button>
           )}
         </div>

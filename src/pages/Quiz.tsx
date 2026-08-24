@@ -1,13 +1,15 @@
 import { useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import PageHeading from '@/components/PageHeading';
 import AudioPlayer from '@/components/quiz/AudioPlayer';
 import QuizGame from '@/components/quiz/quiz-game';
 import audioFile from '@/assets/sounds/quizziz-in-game-theme.mp3';
 import Loading from '@/components/Loading';
+import ErrorMessage from '@/components/utilities/ErrorMessage';
 import {
   fetchQuizQuestions,
   fetchQuizStateIfExists,
+  QuizAccessError,
 } from '@/queries/quiz-queries';
 import { useQuery } from '@tanstack/react-query';
 import { extractQuizState } from '@/lib/quiz-state';
@@ -123,12 +125,13 @@ export function QuizPage() {
 }
 
 function StudentQuizView({ quizId }: { quizId?: string }) {
+  const navigate = useNavigate();
   const questions = useQuizStore((state) => state.questions);
   const quizState = useQuizStore((state) => state.quizState);
   const initializeQuiz = useQuizStore((state) => state.initializeQuiz);
   const resetQuizStore = useQuizStore((state) => state.reset);
 
-  const { data: quizData, isLoading: isQuizLoading, isError } = useQuery({
+  const { data: quizData, isLoading: isQuizLoading, isError, error } = useQuery({
     queryKey: quizKeys.detail(quizId ?? ''),
     queryFn: async () => {
       if (!quizId) {
@@ -170,15 +173,6 @@ function StudentQuizView({ quizId }: { quizId?: string }) {
     staleTime: 0,
   });
 
-  if (isError) {
-    return (
-      <div className="flex flex-col items-center justify-center h-[60vh] p-4 text-center">
-        <p className="text-red text-lg font-semibold">Failed to load quiz.</p>
-        <p className="text-gray-500 mt-2">Please try refreshing the page.</p>
-      </div>
-    );
-  }
-
   useEffect(() => {
     if (!quizData) {
       return;
@@ -188,6 +182,26 @@ function StudentQuizView({ quizId }: { quizId?: string }) {
   }, [initializeQuiz, quizData]);
 
   useEffect(() => resetQuizStore, [resetQuizStore]);
+
+  if (isError) {
+    if (error instanceof QuizAccessError) {
+      return (
+        <ErrorMessage
+          title="Quiz locked"
+          description={error.message}
+          onBack={() => navigate(`/lectures/lecture/${error.lectureKey}`)}
+          backLabel="Go to lecture"
+        />
+      );
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] p-4 text-center">
+        <p className="text-red text-lg font-semibold">Failed to load quiz.</p>
+        <p className="text-gray-500 mt-2">Please try refreshing the page.</p>
+      </div>
+    );
+  }
 
   if (!quizId || isQuizLoading || !quizState) {
     return <Loading />;

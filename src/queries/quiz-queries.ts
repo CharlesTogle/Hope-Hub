@@ -12,6 +12,19 @@ import type { User } from '@supabase/supabase-js';
 import { logger } from '@/utilities/logger';
 import { isPftQuizUnlocked } from '@/lib/pft-session';
 import { getQuizQuestionDuration } from '@/lib/quiz-timing';
+import { Lessons } from '@/utilities/Lessons';
+
+export class QuizAccessError extends Error {
+  lectureKey: number;
+  lectureTitle: string;
+
+  constructor(lectureKey: number, lectureTitle: string) {
+    super(`Finish lecture: ${lectureTitle} before accessing this quiz.`);
+    this.name = 'QuizAccessError';
+    this.lectureKey = lectureKey;
+    this.lectureTitle = lectureTitle;
+  }
+}
 
 export async function getCurrentUser(): Promise<User> {
   const { data: { user }, error } = await supabase.auth.getUser();
@@ -115,14 +128,34 @@ function normalizeQuizQuestionDurations(questions: QuizQuestion[]): QuizQuestion
 
 export async function fetchQuizQuestions(quizId: number | string): Promise<QuizQuestion[]> {
   const user = await getCurrentUser();
-  let questions = await getQuestionsFromQuizProgressIfExists(quizId);
-
   const { data: userData } = await supabase
     .from('profile')
     .select('user_type')
     .eq('uuid', user.id)
     .single();
   const userType = userData?.user_type ?? 'student';
+
+  if (userType === 'student' && Number(quizId) !== 0) {
+    const { data: lectureData, error: lectureError } = await supabase
+      .from('lecture_progress')
+      .select('lecture_progress')
+      .eq('uuid', user.id)
+      .maybeSingle();
+
+    if (lectureError) throw lectureError;
+
+    const lectureIsDone = (lectureData?.lecture_progress ?? []).some(
+      (lecture: { key?: number; status?: string }) =>
+        lecture.key === Number(quizId) && lecture.status === 'Done',
+    );
+
+    if (!lectureIsDone) {
+      const lecture = Lessons.find((item) => item.key === Number(quizId));
+      throw new QuizAccessError(Number(quizId), lecture?.title ?? `#${quizId}`);
+    }
+  }
+
+  let questions = await getQuestionsFromQuizProgressIfExists(quizId);
 
   if (!questions) {
     questions = normalizeQuizQuestionDurations(
