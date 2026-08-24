@@ -52,7 +52,7 @@ export default function StudentDashboard() {
 
   // Lecture progress
   const { data: lectureProgressData, isLoading: lectureLoading } = useQuery({
-    queryKey: lectureKeys.progress(userID ?? ''),
+    queryKey: lectureKeys.summary(userID ?? ''),
     queryFn: () => fetchLectureProgressSummary(userID ?? ''),
     enabled: !!userID,
   });

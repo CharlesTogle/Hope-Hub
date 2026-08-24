@@ -20,6 +20,7 @@ export const profileKeys = {
 
 export const lectureKeys = {
   progress: (id: string) => ['lecture', 'progress', id] as const,
+  summary: (id: string) => ['lecture', 'summary', id] as const,
 };
 
 export const pftKeys = {
