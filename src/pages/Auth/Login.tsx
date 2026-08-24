@@ -97,9 +97,13 @@ export default function Login() {
 
       if (error) {
         logger.error('Login failed', error);
+        const errorDetails =
+          error.context instanceof Response
+            ? { status: error.context.status, ...(await error.context.json()) }
+            : error;
         dispatch({
           type: 'set-error',
-          value: getUserFacingError(error, 'login'),
+          value: getUserFacingError(errorDetails, 'login'),
         });
         return;
       }

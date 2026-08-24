@@ -80,6 +80,19 @@ Deno.serve(async (req)=>{
     });
   } catch (err) {
     console.error("login error:", err);
+    const errorCode = err && typeof err === "object" && "code" in err ? err.code : undefined;
+    if (errorCode === "invalid_credentials") {
+      return new Response(JSON.stringify({ message: "Invalid login credentials" }), {
+        headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+    if (errorCode === "email_not_confirmed") {
+      return new Response(JSON.stringify({ message: "email not confirmed" }), {
+        headers: { ...corsHeadersFor(req), "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
     return new Response(JSON.stringify({
       message: "Login failed. Please try again."
     }), {

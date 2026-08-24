@@ -44,6 +44,9 @@ describe('getUserFacingError', () => {
     expect(getUserFacingError(new Error('Invalid login credentials'), 'login')).toBe(
       'Invalid email or password. Please try again.',
     );
+    expect(
+      getUserFacingError({ status: 400, message: 'Invalid login credentials' }, 'login'),
+    ).toBe('Invalid email or password. Please try again.');
     expect(getUserFacingError(new Error('email not confirmed'), 'login')).toBe(
       'Please verify your email before logging in.',
     );
