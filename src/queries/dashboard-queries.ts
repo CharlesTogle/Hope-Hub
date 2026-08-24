@@ -40,16 +40,17 @@ export async function fetchQuizCount(): Promise<number> {
     logger.error('fetchQuizCount failed', error);
     throw error;
   }
-  return count ?? 0;
+  return (count ?? 0) + 1;
 }
 
 export async function fetchStudentQuizProgressSummary(
   userId: string,
   quizCount: number,
 ): Promise<ProgressStats> {
+  const quizIds = Array.from({ length: quizCount }, (_, index) => index);
   const { data, error } = await supabase
     .from('quiz_progress')
-    .select('status')
+    .select('quiz_id, status')
     .eq('user_id', userId);
 
   if (error) {
@@ -60,7 +61,7 @@ export async function fetchStudentQuizProgressSummary(
   let completed = 0;
   let pending = 0;
 
-  data.forEach((item) => {
+  data.filter((item) => quizIds.includes(item.quiz_id)).forEach((item) => {
     if (item.status === 'Done') completed++;
     else if (item.status === 'Pending') pending++;
   });
@@ -77,6 +78,7 @@ export async function fetchStudentQuizRows(
   userId: string,
   quizCount: number,
 ): Promise<DashboardQuizRow[]> {
+  const quizIds = Array.from({ length: quizCount }, (_, index) => index);
   const { data, error } = await supabase
     .from('quiz_progress')
     .select('quiz_id, status, score, total_items, date_taken')
@@ -89,8 +91,8 @@ export async function fetchStudentQuizRows(
 
   const rows: DashboardQuizRow[] = [];
 
-  for (let i = 1; i <= quizCount; i++) {
-    const quiz = data?.find((item) => item.quiz_id === i);
+  for (const quizId of quizIds) {
+    const quiz = data?.find((item) => item.quiz_id === quizId);
     rows.push(
       quiz
         ? {
@@ -100,11 +102,11 @@ export async function fetchStudentQuizRows(
             date_taken: quiz.date_taken ?? undefined,
           }
         : {
-        quiz_id: i,
-        status: 'Incomplete',
-        score: undefined,
-        total_items: undefined,
-        date_taken: undefined,
+            quiz_id: quizId,
+            status: 'Incomplete',
+            score: undefined,
+            total_items: undefined,
+            date_taken: undefined,
           },
     );
   }

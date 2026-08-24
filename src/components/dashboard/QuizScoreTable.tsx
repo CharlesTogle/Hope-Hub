@@ -29,7 +29,7 @@ export default function QuizScoreTable({ quizData }: QuizScoreTableProps) {
           </tr>
           {sortedQuizData.map((data, index) => (
             <tr
-              key={data.quiz_id || index}
+              key={data.quiz_id ?? index}
               className="font-semibold h-10 text-xs lg:text-base md:text-base"
             >
               <td>
