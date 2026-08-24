@@ -40,7 +40,7 @@ export async function fetchQuizCount(): Promise<number> {
     logger.error('fetchQuizCount failed', error);
     throw error;
   }
-  return (count ?? 0) + 1;
+  return count ?? 0;
 }
 
 export async function fetchStudentQuizProgressSummary(
