@@ -1,5 +1,5 @@
 import { Lessons } from '@/utilities/Lessons';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PageHeading from '@/components/PageHeading';
 import LecturePDF from '@/components/lectures/LecturePDF';
@@ -9,7 +9,7 @@ import supabase from '@/client/supabase';
 import LectureProgress from '@/utilities/LectureProgress';
 import Loading from '@/components/Loading';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { lectureKeys } from '@/lib/query-keys';
+import { lectureKeys, quizKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import type { LectureProgressItem } from '@/types/lecture';
 import { getUserFacingError } from '@/utilities/user-facing-errors';
@@ -22,6 +22,7 @@ export default function LecturePage() {
   const isTeacher = profile?.user_type === 'teacher';
   const selectedLessonNumber = Number(lessonNumber);
   const queryClient = useQueryClient();
+  const [hasTimerEnded, setHasTimerEnded] = useState(false);
 
   const lessonDetails = Lessons.find((lesson) => lesson.key === selectedLessonNumber);
 
@@ -109,7 +110,7 @@ export default function LecturePage() {
 
       const { data: existingQuizProgress, error: quizProgressError } = await supabase
         .from('quiz_progress')
-        .select('id')
+        .select('id, status')
         .eq('user_id', userId ?? '')
         .eq('quiz_id', selectedLessonNumber)
         .maybeSingle();
@@ -133,18 +134,33 @@ export default function LecturePage() {
         if (insertError) {
           throw insertError;
         }
+      } else if (existingQuizProgress.status === 'Locked') {
+        const { error: updateError } = await supabase
+          .from('quiz_progress')
+          .update({ status: 'Pending' as const })
+          .eq('user_id', currentUserId)
+          .eq('quiz_id', selectedLessonNumber);
+
+        if (updateError) {
+          throw updateError;
+        }
       }
 
       return updated;
     },
     onSuccess: (updated) => {
       queryClient.setQueryData(lectureKeys.progress(userId ?? ''), updated);
+      void queryClient.invalidateQueries({ queryKey: quizKeys.list() });
     },
-    onError: () => toast.error('Failed to finish lecture. Please try again.'),
+    onError: () => {
+      setHasTimerEnded(false);
+      toast.error('Failed to finish lecture. Please try again.');
+    },
   });
 
   const handleLectureFinish = () => {
     if (isLectureDone) return;
+    setHasTimerEnded(true);
     finishMutation.mutate();
   };
 
@@ -168,7 +184,7 @@ export default function LecturePage() {
           pdfLink={pdf}
           quizLink={quizLink}
           onTimerEnd={handleLectureFinish}
-          isLectureDone={isLectureDone}
+          isLectureDone={isLectureDone || hasTimerEnded}
           isTeacher={isTeacher}
         />
       </div>
