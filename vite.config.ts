@@ -9,6 +9,7 @@ import checker from 'vite-plugin-checker';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  envPrefix: ['VITE_', 'APP_ENV'],
   server: {
     host: true,
   },

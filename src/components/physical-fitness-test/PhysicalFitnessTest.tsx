@@ -11,6 +11,7 @@ import { pftKeys, quizKeys } from '@/lib/query-keys';
 import { useAuthStore } from '@/store/auth-store';
 import { usePhysicalFitnessStore } from '@/store/physical-fitness-store';
 import { PFT_TIMEOUT_SECONDS } from '@/lib/pft-session';
+import { getPftTimingValidation } from '@/lib/pft-timing';
 import { savePftSession } from '@/mutations/pft-mutations';
 import type {
   ClassificationEntry,
@@ -331,36 +332,28 @@ export default function PhysicalFitnessTest({
 
     const startTimeInMinutes = parseTime(testResults.timeStarted);
     const endTimeInMinutes = parseTime(testResults.timeEnded);
-    const isStartTimeAfterEndTime = startTimeInMinutes > endTimeInMinutes;
-    const isTimeThresholdReached = endTimeInMinutes - startTimeInMinutes <= 2;
-    const isTimeEndValid = endTimeInMinutes - startTimeInMinutes > 20;
+    const timingError = getPftTimingValidation({
+      appEnv: import.meta.env.APP_ENV,
+      startTimeInMinutes,
+      endTimeInMinutes,
+      currentTimeInMinutes: parseTime(nowTime),
+      isBmiTest:
+        testDetails.title === 'BMI (Weight)' || testDetails.title === 'BMI (Height)',
+    });
 
-    if (isStartTimeAfterEndTime) {
+    const timingErrorMessages = {
+      'end-before-start': "Please input a valid time for 'Time End'",
+      'end-after-current-time': "Please input a valid time for 'Time End'",
+      'too-short':
+        'Test duration is too short. The test must last more than 2 minutes for accurate results.',
+      'too-long':
+        'Test duration is too long. The test should not exceed 20 minutes. Please check your time entries.',
+    } satisfies Record<NonNullable<typeof timingError>, string>;
+
+    if (timingError) {
       dispatch({
         type: 'show-alert',
-        message: "Please input a valid time for 'Time End'",
-      });
-      return;
-    }
-
-    if (
-      isTimeThresholdReached &&
-      testDetails.title !== 'BMI (Weight)' &&
-      testDetails.title !== 'BMI (Height)'
-    ) {
-      dispatch({
-        type: 'show-alert',
-        message:
-          'Test duration is too short. The test must last more than 2 minutes for accurate results.',
-      });
-      return;
-    }
-
-    if (isTimeEndValid) {
-      dispatch({
-        type: 'show-alert',
-        message:
-          'Test duration is too long. The test should not exceed 20 minutes. Please check your time entries.',
+        message: timingErrorMessages[timingError],
       });
       return;
     }

@@ -152,6 +152,53 @@ test.describe('Physical Fitness Test — PAR-Q', () => {
 });
 
 test.describe('Physical Fitness Test — Test Pages', () => {
+  test('short test duration follows APP_ENV timing policy', async ({
+    page,
+    studentUser,
+    setAuthSession,
+    mockPhysicalFitnessTest,
+  }) => {
+    await setAuthSession(studentUser);
+    await mockPhysicalFitnessTest({
+      uuid: studentUser.id,
+      pre_physical_fitness_test: null,
+      post_physical_fitness_test: null,
+    });
+
+    await page.addInitScript(() => {
+      localStorage.setItem(
+        'physicalFitnessData',
+        JSON.stringify({
+          gender: 'Male',
+          category: 'secondaryBoys',
+          isPARQFinished: true,
+          finishedTestIndex: [0, 2],
+        }),
+      );
+    });
+
+    await page.goto(APP_ROUTES.physicalFitnessTest.test(1));
+    await page.waitForLoadState('networkidle');
+
+    const now = new Date();
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(
+      now.getMinutes(),
+    ).padStart(2, '0')}`;
+    await page.locator('input[type="number"]').fill('10');
+    await page.locator('input[type="time"]').fill(currentTime);
+    await page.getByRole('button', { name: 'Submit' }).click();
+
+    if (process.env.APP_ENV === 'DEV') {
+      await expect(page).toHaveURL(
+        new RegExp(`${APP_ROUTES.physicalFitnessTest.test(2)}$`),
+      );
+    } else {
+      await expect(
+        page.getByText('Test duration is too short.', { exact: false }),
+      ).toBeVisible();
+    }
+  });
+
   test('test page 0 (BMI weight) loads', async ({
     page,
     studentUser,
