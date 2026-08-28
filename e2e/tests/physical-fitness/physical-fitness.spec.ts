@@ -152,7 +152,7 @@ test.describe('Physical Fitness Test — PAR-Q', () => {
 });
 
 test.describe('Physical Fitness Test — Test Pages', () => {
-  test('short test duration follows APP_ENV timing policy', async ({
+  test('short test duration follows VITE_APP_ENV timing policy', async ({
     page,
     studentUser,
     setAuthSession,
@@ -188,7 +188,7 @@ test.describe('Physical Fitness Test — Test Pages', () => {
     await page.locator('input[type="time"]').fill(currentTime);
     await page.getByRole('button', { name: 'Submit' }).click();
 
-    if (process.env.APP_ENV === 'DEV') {
+    if (process.env.VITE_APP_ENV === 'DEV') {
       await expect(page).toHaveURL(
         new RegExp(`${APP_ROUTES.physicalFitnessTest.test(2)}$`),
       );

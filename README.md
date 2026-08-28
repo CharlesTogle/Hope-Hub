@@ -132,10 +132,10 @@ For local physical-fitness testing, set the exact value below to skip timing
 validation. Leave it unset in normal environments.
 
 ```bash
-APP_ENV=DEV
+VITE_APP_ENV=DEV
 ```
 
-Only `APP_ENV=DEV` disables physical-fitness timing validation. The variable
+Only `VITE_APP_ENV=DEV` disables physical-fitness timing validation. The variable
 must be supplied to the Vite dev server or build process.
 
 `VITE_YOUTUBE_API_KEY` exists in [src/client/youtube.js](./src/client/youtube.js), but it is not part of the main app bootstrap path today.

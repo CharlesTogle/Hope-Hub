@@ -1,10 +1,10 @@
-# Physical Fitness `APP_ENV` Timing Bypass Implementation Plan
+# Physical Fitness `VITE_APP_ENV` Timing Bypass Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a Vite-exposed `APP_ENV` environment switch so `APP_ENV=DEV` skips physical-fitness time validation while normal environments retain the production timing rules.
+**Goal:** Add a Vite-exposed `VITE_APP_ENV` environment switch so `VITE_APP_ENV=DEV` skips physical-fitness time validation while normal environments retain the production timing rules.
 
-**Architecture:** Read `import.meta.env.APP_ENV` through the existing Vite environment mechanism and pass the resulting boolean into a small pure timing-validation helper. The helper will decide whether the current-time and minimum-duration checks apply; the component will continue to own alerts, persistence, and navigation.
+**Architecture:** Read `import.meta.env.VITE_APP_ENV` through Vite's default environment mechanism and pass the resulting boolean into a small pure timing-validation helper. The helper will decide whether the current-time and minimum-duration checks apply; the component will continue to own alerts, persistence, and navigation.
 
 **Tech Stack:** React 19, TypeScript, Vite, Vitest.
 
@@ -33,7 +33,7 @@ import { describe, expect, it } from 'vitest';
 import { shouldValidatePftTiming } from '@/lib/pft-timing';
 
 describe('shouldValidatePftTiming', () => {
-  it('skips timing validation only for APP_ENV=DEV', () => {
+  it('skips timing validation only for VITE_APP_ENV=DEV', () => {
     expect(shouldValidatePftTiming('DEV')).toBe(false);
   });
 
@@ -102,40 +102,35 @@ git add src/lib/pft-timing.ts src/lib/__tests__/pft-timing.test.ts
 git commit -m "test: define physical fitness timing bypass"
 ```
 
-### Task 2: Wire `APP_ENV` Into Physical-Fitness Submission
+### Task 2: Wire `VITE_APP_ENV` Into Physical-Fitness Submission
 
 **Files:**
 - Modify: `src/vite-env.d.ts:1`
-- Modify: `vite.config.ts:11-23`
 - Modify: `src/components/physical-fitness-test/PhysicalFitnessTest.tsx:314-366`
 
 **Interfaces:**
 - Consumes `shouldValidatePftTiming` and `getPftTimingValidation` from `@/lib/pft-timing`.
-- Produces the existing alert behavior and submission flow with timing validation bypassed only when `import.meta.env.APP_ENV === 'DEV'`.
+- Produces the existing alert behavior and submission flow with timing validation bypassed only when `import.meta.env.VITE_APP_ENV === 'DEV'`.
 
 - [ ] **Step 1: Add the Vite environment type**
 
 Add an `ImportMetaEnv` augmentation after the existing Vite reference:
 
 ```ts
-readonly APP_ENV?: string;
+  readonly VITE_APP_ENV?: string;
 ```
 
 Keep it optional so local builds without the variable type-check and retain production behavior.
 
-- [ ] **Step 2: Expose the unprefixed variable through Vite**
-
-Add `envPrefix: ['VITE_', 'APP_ENV']` to the Vite config. Vite only exposes `VITE_` variables by default; this explicit prefix is required to honor the requested variable name. Do not add broad prefixes such as `''`, which would expose unrelated environment values to client code.
-
-- [ ] **Step 3: Replace inline timing branches with the helper result**
+- [ ] **Step 2: Replace inline timing branches with the helper result**
 
 Inside `handleSubmit`, keep the empty-field guard unchanged, calculate `nowTime` once, call the helper with parsed start/end values and the current time, then map each returned error to the existing user-facing alert. Do not run the helper for teacher navigation, and do not alter session persistence.
 
-- [ ] **Step 4: Verify `DEV` bypasses the requested checks**
+- [ ] **Step 3: Verify `DEV` bypasses the requested checks**
 
-Confirm the submit path allows an otherwise invalid end time and a duration under 3 minutes when `APP_ENV=DEV`, while still rejecting empty fields. Confirm the default/unset environment still shows the corresponding timing alert.
+Confirm the submit path allows an otherwise invalid end time and a duration under 3 minutes when `VITE_APP_ENV=DEV`, while still rejecting empty fields. Confirm the default/unset environment still shows the corresponding timing alert.
 
-- [ ] **Step 5: Run repository verification**
+- [ ] **Step 4: Run repository verification**
 
 Run: `pnpm test`
 
@@ -170,14 +165,14 @@ git commit -m "feat: bypass pft timing checks in dev"
 Add a concise example without exposing any existing secret values:
 
 ```dotenv
-APP_ENV=DEV
+VITE_APP_ENV=DEV
 ```
 
 State that only `DEV` disables PFT timing validation and that the variable must be supplied to the Vite build/dev process.
 
 - [ ] **Step 2: Verify the setting is build-visible**
 
-Run: `APP_ENV=DEV pnpm build`
+Run: `VITE_APP_ENV=DEV pnpm build`
 
 Expected: successful build. Run the normal build afterward if the environment is persisted by the shell or CI configuration.
 

@@ -333,7 +333,7 @@ export default function PhysicalFitnessTest({
     const startTimeInMinutes = parseTime(testResults.timeStarted);
     const endTimeInMinutes = parseTime(testResults.timeEnded);
     const timingError = getPftTimingValidation({
-      appEnv: import.meta.env.APP_ENV,
+      appEnv: import.meta.env.VITE_APP_ENV,
       startTimeInMinutes,
       endTimeInMinutes,
       currentTimeInMinutes: parseTime(nowTime),
