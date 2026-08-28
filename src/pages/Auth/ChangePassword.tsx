@@ -7,7 +7,7 @@ import FormButton from '@/components/auth/FormButton';
 import { useEffect, useReducer, useRef } from 'react';
 import supabase from '@/client/supabase';
 import { logger } from '@/utilities/logger';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 interface ChangePasswordState {
   password: string;
@@ -23,6 +23,17 @@ type ChangePasswordAction =
   | { type: 'set-success'; value: string }
   | { type: 'set-loading'; value: boolean }
   | { type: 'clear-messages' };
+
+export function getRecoveryParams(search: string, hash: string) {
+  const queryParams = new URLSearchParams(search);
+  const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
+
+  return {
+    accessToken: queryParams.get('access_token') ?? hashParams.get('access_token') ?? '',
+    refreshToken: queryParams.get('refresh_token') ?? hashParams.get('refresh_token') ?? '',
+    type: queryParams.get('type') ?? hashParams.get('type'),
+  };
+}
 
 const initialState: ChangePasswordState = {
   password: '',
@@ -53,11 +64,11 @@ function reducer(
 }
 
 export default function ChangePassword() {
-  const [searchParams] = useSearchParams();
   const [state, dispatch] = useReducer(reducer, initialState);
-  const accessToken = searchParams.get('access_token') ?? '';
-  const refreshToken = searchParams.get('refresh_token') ?? '';
-  const type = searchParams.get('type');
+  const { accessToken, refreshToken, type } = getRecoveryParams(
+    window.location.search,
+    window.location.hash,
+  );
   const navigate = useNavigate();
   const redirectIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 

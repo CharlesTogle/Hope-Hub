@@ -128,27 +128,6 @@ export const UpperBodyVideos: WorkoutVideo[] = [
     videoLink: 'https://www.youtube.com/embed/Siucbbk0Oxs?si=sl87yaCZGwIQaFn1',
     uploadDate: '2025-07-23T14:00:00.000Z',
   },
-  {
-    thumbnail:
-      'https://pcgsdfbkpnfgcvdopgzz.supabase.co/storage/v1/object/public/WorkoutZoneCovers/cover-russian-twist.png',
-    url: 'russian-twist',
-    duration: '00:33',
-    title: 'Russian Twist',
-    description: {
-      howToDoIt:
-        'Sit on the floor with knees bent and feet flat or lifted. Lean back slightly, keeping your back straight. Clasp your hands or hold a weight, and rotate your torso to one side. Return to the center, then twist to the other side. Repeat, alternating sides.',
-      do: [
-        'Keep your movements controlled and deliberate.',
-        'Engage your core throughout the movement.',
-      ],
-      dont: [
-        "Don't round your lower back.",
-        "Don't rush the twists \u2014 avoid using momentum.",
-      ],
-    },
-    videoLink: 'https://youtube.com/embed/NCaki3D-KB8?si=AnOOBCaXFnqXUgFd',
-    uploadDate: '2025-08-28T14:02:00.000Z',
-  },
 ];
 
 export const LowerBodyVideos: WorkoutVideo[] = [
@@ -200,29 +179,6 @@ export const LowerBodyVideos: WorkoutVideo[] = [
   },
   {
     thumbnail:
-      'https://pcgsdfbkpnfgcvdopgzz.supabase.co/storage/v1/object/public/WorkoutZoneCovers/cover-lunges.png',
-    url: 'lunges',
-    duration: '00:50',
-    title: 'Lunges',
-    description: {
-      howToDoIt:
-        'Stand upright with feet hip-width apart. Step forward with one leg, lowering your hips until both knees are bent at about 90 degrees. Push back up to the starting position and repeat on the other leg.',
-      do: [
-        'Keep your torso upright.',
-        'Step forward far enough to create a 90-degree angle in both knees.',
-        'Keep your front knee aligned with your ankle.',
-      ],
-      dont: [
-        'Let your front knee go beyond your toes.',
-        'Let your upper body lean forward or twist.',
-        'Bounce off the back foot.',
-      ],
-    },
-    videoLink: 'https://youtube.com/embed/nxiV8yVo4Xc?si=f7zrBzpS32GVMA7j',
-    uploadDate: '2025-07-23T14:00:00.000Z',
-  },
-  {
-    thumbnail:
       'https://pcgsdfbkpnfgcvdopgzz.supabase.co/storage/v1/object/public/WorkoutZoneCovers/cover-split-squat.png',
     url: 'split-squats',
     duration: '00:48',
@@ -243,29 +199,6 @@ export const LowerBodyVideos: WorkoutVideo[] = [
     },
     videoLink: 'https://www.youtube.com/embed/BKTAwDzybPI?si=L15IY3EqOtIfUtMA',
     uploadDate: '2025-07-23T14:00:00.000Z',
-  },
-  {
-    thumbnail:
-      'https://pcgsdfbkpnfgcvdopgzz.supabase.co/storage/v1/object/public/WorkoutZoneCovers/cover-kettleball-sumo-deadlift.png',
-    url: 'kettle-ball-sumo-deadlift',
-    duration: '01:18',
-    title: 'Kettle Ball Sumo Deadlift',
-    description: {
-      howToDoIt:
-        'Stand with feet wider than shoulder-width, toes slightly turned out. Place a kettlebell on the floor between your feet. Push your hips back and bend your knees to grip the kettlebell with both hands. Keep your back flat, chest lifted, and core braced. Drive through your heels to stand up tall, lifting the kettlebell to hip level. Lower it back down with control by hinging at the hips.',
-      do: [
-        'Keep the kettlebell close to your body.',
-        'Engage your glutes and hamstrings during the lift.',
-        'Maintain a neutral spine and tight core.',
-      ],
-      dont: [
-        "Don't round your back.",
-        "Don't jerk the weight off the floor.",
-        "Don't let your knees cave inward.",
-      ],
-    },
-    videoLink: 'https://youtube.com/embed/5iIP07NqnJQ?si=_p2pVHYQI7f_LTPe',
-    uploadDate: '2025-08-28T14:02:00.000Z',
   },
 ];
 
