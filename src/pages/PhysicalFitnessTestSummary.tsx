@@ -127,14 +127,14 @@ export function PhysicalFitnessTestSummary() {
   }
 
   return (
-    <section id="physical-fitness-test-summary" className="parent-container">
-      <PageHeading text="Physical Fitness Test" className="" />
+    <section id="physical-fitness-test-summary" className="min-h-[100dvh] bg-[#eef4ff] text-[#111c4e]">
+      <PageHeading text="Physical Fitness Test" className="bg-[#111c4e] text-white border-[#111c4e] [&_h1]:text-white [&_p]:text-[#dce8ff]" />
       <div id="summary-content" className="content-container">
         <h1 className="w-full text-left text-3xl lg:text-4xl font-heading lg:-ml-20 lg:mb-5 font-medium text-primary-blue">
           {testType === 'pre-test' ? 'Pre Test' : 'Post Test'} Record
         </h1>
         {studentInfo && (
-          <div className="w-full mb-5 p-4 bg-gray-100 rounded-lg lg:-ml-20">
+          <div className="mb-5 w-full rounded-2xl border border-[#c4d4f2] bg-white p-5 shadow-[0_12px_30px_rgba(17,28,78,0.08)] lg:-ml-20">
             <h2 className="text-xl font-medium text-gray-800 mb-2">Student Information</h2>
             <p className="text-gray-700"><strong>Name:</strong> {studentInfo.full_name}</p>
             <p className="text-gray-700"><strong>Email:</strong> {studentInfo.email}</p>
@@ -153,8 +153,8 @@ export function PhysicalFitnessTestSummary() {
                 const heading = sectionHeadings[index];
                 return heading ? (
                   <Fragment>
-                    <h1 className="text-2xl lg:text-3xl font-heading lg:-ml-5 mb-0 font-medium">{heading}</h1>
-                    <hr className="w-1/3 border-1 border-primary-yellow mb-4 -ml-5" />
+                    <h1 className="mb-0 font-heading text-2xl font-medium text-[#111c4e] lg:-ml-5 lg:text-3xl">{heading}</h1>
+                    <hr className="mb-4 -ml-5 w-1/3 border-1 border-primary-yellow" />
                   </Fragment>
                 ) : null;
               })()}
@@ -173,7 +173,7 @@ const TableColumn = ({ columnContent }: { columnContent: string[] }) => (
     {columnContent.map((content, index) => (
       <td
         key={`data ${index}`}
-        className={`${index === 0 ? 'border-l-0!' : ''} text-xs font-semibold lg:text-base text-center font-content w-15 h-15 border-l-2 lg:border-l-4 border-t-4 border-secondary-dark-blue`}
+        className={`${index === 0 ? 'border-l-0!' : ''} h-15 w-15 border-t-4 border-l-2 border-secondary-dark-blue text-center font-content text-xs font-semibold lg:border-l-4 lg:text-base`}
       >
         {content}
       </td>
@@ -186,7 +186,7 @@ const TableHeading = ({ headings }: { headings: string[] }) => (
     {headings.map((heading, index) => (
       <th
         key={heading}
-        className={`${index === 0 ? 'border-l-0!' : ''} text-xs lg:text-base h-10 lg:h-20 text-center font-content border-l-2 lg:border-l-4 text-white bg-secondary-dark-blue border-white`}
+        className={`${index === 0 ? 'border-l-0!' : ''} h-10 border-l-2 border-white bg-secondary-dark-blue text-center font-content text-xs text-white lg:h-20 lg:border-l-4 lg:text-base`}
       >
         {heading}
       </th>
@@ -210,7 +210,7 @@ const TableSummary = ({ summary }: { summary: SummaryRow }) => (
       <p>{summary.title}</p>
     </div>
     <hr className="w-20 border-1 border-primary-yellow mb-3" />
-    <div id="table-container" className="rounded-md overflow-hidden border-5 border-secondary-dark-blue h-fit w-full">
+    <div id="table-container" className="h-fit w-full overflow-hidden rounded-xl border-4 border-secondary-dark-blue bg-white shadow-[0_10px_24px_rgba(17,28,78,0.1)]">
       <table className="w-full h-full">
         <tbody>
           <tr className={`${summary.hasParentHeading ? '' : 'hidden'}`}>

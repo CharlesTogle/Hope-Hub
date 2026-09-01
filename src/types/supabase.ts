@@ -162,10 +162,6 @@ export interface Database {
       };
     };
     Functions: {
-      ensure_current_user_data: {
-        Args: Record<string, never>;
-        Returns: undefined;
-      };
       class_code_exists: {
         Args: { [key: string]: unknown; p_class_code: string };
         Returns: boolean;
@@ -185,18 +181,6 @@ export interface Database {
       retrieve_students_by_class: {
         Args: { [key: string]: unknown; class_code_input: string };
         Returns: RawStudentData[];
-      };
-      register_user: {
-        Args: {
-          [key: string]: unknown;
-          p_user_id: string;
-          p_full_name: string;
-          p_email: string;
-          p_user_type: string;
-          p_class_code: string | null;
-          p_lecture_progress: LectureProgressItem[];
-        };
-        Returns: void;
       };
     };
     Views: {};

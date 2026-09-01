@@ -467,7 +467,7 @@ export default function PhysicalFitnessTest({
   }: PFTTestDefinition = testDetails;
 
   return (
-    <div id="test-container" className="min-w-[100%] h-full">
+    <div id="test-container" className="min-w-[100%] h-full bg-[#eef4ff] text-[#111c4e]">
       {alertMessage && (
         <AlertMessage
           text={alertMessage}
@@ -477,20 +477,20 @@ export default function PhysicalFitnessTest({
       )}
       <div
         id="test-contents"
-        className="w-[95%] mt-20 gap-5 mr-auto ml-auto lg:grid lg:grid-cols-[65%_35%] lg:w-[85%] lg:mt-0"
+        className="mx-auto grid w-[95%] gap-5 pt-20 lg:w-[85%] lg:grid-cols-[65%_35%] lg:pt-8"
       >
         <div
           id="test-instructions"
-          className="p-5 pb-10 grid grid-cols-[60%_40%] border-2 border-black row-span-2 relative font-content rounded-2xl lg:p-10"
+          className="relative row-span-2 grid grid-cols-1 gap-5 rounded-2xl border border-[#c4d4f2] bg-white p-5 pb-10 font-content shadow-[0_14px_35px_rgba(17,28,78,0.09)] lg:grid-cols-[60%_40%] lg:p-10"
         >
           <div
             id="name"
             className="flex w-full flex-col justify-center items-start"
           >
-            <h1 id="test-name" className="text-3xl font-bold mb-3">
+            <h1 id="test-name" className="mb-3 text-3xl font-bold text-[#111c4e]">
               {title}
             </h1>
-            <hr className="w-[50%] border-1 border-black" />
+            <hr className="w-[50%] border-1 border-primary-yellow" />
           </div>
           {userType !== 'teacher' && (
             <div
@@ -508,7 +508,7 @@ export default function PhysicalFitnessTest({
           )}
           <iframe
             src={videoInstructions}
-            className="col-span-2 mt-10 mb-5 w-full aspect-video border-1 border-black rounded-sm"
+            className="col-span-2 mt-10 mb-5 aspect-video w-full rounded-xl border border-[#c4d4f2] bg-[#dce8ff]"
             allow="autoplay"
           />
           <div id="instructions" className="col-span-2 text-sm font-medium">
@@ -532,8 +532,8 @@ export default function PhysicalFitnessTest({
               id="scoring"
             />
           </div>
-          <hr className="absolute bottom-8 right-0 border-1 border-black w-[20%]" />
-          <hr className="absolute bottom-5 left-0 border-1 border-black w-[50%]" />
+          <hr className="absolute bottom-8 right-0 w-[20%] border-1 border-primary-yellow" />
+          <hr className="absolute bottom-5 left-0 w-[50%] border-1 border-[#c4d4f2]" />
         </div>
         <div
           id="results-interpretation-tips"

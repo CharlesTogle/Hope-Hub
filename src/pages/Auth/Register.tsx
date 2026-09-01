@@ -5,6 +5,7 @@ import FormInput from '@/components/auth/FormInput';
 import InputContainer from '@/components/auth/InputContainer';
 import FormButton from '@/components/auth/FormButton';
 import { useReducer } from 'react';
+import supabase from '@/client/supabase';
 import LectureProgress from '@/utilities/LectureProgress';
 import type { UserType } from '@/types/auth';
 
@@ -128,38 +129,27 @@ export default function Register() {
     }
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-      const res = await fetch(`${supabaseUrl}/functions/v1/registration`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${anonKey}`,
-        },
-        body: JSON.stringify({
-          userData: {
-            email: trimmedEmail,
-            password: trimmedPassword,
-            name: trimmedName,
+      const { data, error } = await supabase.auth.signUp({
+        email: trimmedEmail,
+        password: trimmedPassword,
+        options: {
+          emailRedirectTo: 'https://hope-hub-fitness.vercel.app/auth/account-verification',
+          data: {
+            fullName: trimmedName,
             userType: state.userType,
+            classCode: null,
             lectureProgress: LectureProgress(),
           },
-        }),
+        },
       });
 
-      const body = await res.json();
-
-      if (!res.ok) {
-        const message =
-          res.status === 429
-            ? 'Too many registration attempts. Please wait a moment and try again.'
-            : body?.message ?? 'Registration failed. Please try again.';
-        dispatch({ type: 'set-error', value: message });
+      if (error) {
+        dispatch({ type: 'set-error', value: error.message });
         dispatch({ type: 'set-loading', value: false });
         return;
       }
 
-      if (!body?.data?.user) {
+      if (!data.user) {
         dispatch({
           type: 'set-error',
           value: 'Registration succeeded, but user info is missing.',

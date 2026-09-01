@@ -1,0 +1,44 @@
+name: Database tests
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  database-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.3.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: denoland/setup-deno@v2
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm type-check
+      - run: pnpm build
+      - run: npx supabase start
+      - run: npx supabase status -o env --override-name api.url=E2E_SUPABASE_URL --override-name auth.anon_key=E2E_SUPABASE_ANON_KEY --override-name auth.service_role_key=E2E_SUPABASE_SERVICE_ROLE_KEY >> "$GITHUB_ENV"
+      - run: pnpm test:db
+      - run: RATE_LIMIT_INTEGRATION_TEST=local SUPABASE_URL="$E2E_SUPABASE_URL" SUPABASE_SERVICE_ROLE_KEY="$E2E_SUPABASE_SERVICE_ROLE_KEY" deno test --allow-env --allow-net supabase/functions/_shared/rate-limit.integration.test.ts
+      - run: VITE_SUPABASE_URL="$E2E_SUPABASE_URL" VITE_SUPABASE_ANON_KEY="$E2E_SUPABASE_ANON_KEY" pnpm exec playwright test e2e/tests/auth/local-registration.spec.ts e2e/tests/auth/local-registration-ui.spec.ts
+
+  signup-rate-limit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.3.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: npx supabase start
+      - run: npx supabase status -o env --override-name api.url=E2E_SUPABASE_URL --override-name auth.anon_key=E2E_SUPABASE_ANON_KEY >> "$GITHUB_ENV"
+      - run: pnpm exec playwright test e2e/tests/auth/local-signup-rate-limit.spec.ts --workers=1

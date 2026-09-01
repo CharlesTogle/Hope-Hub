@@ -294,7 +294,7 @@ export default function PhysicalActivityReadinessQuestionnaire() {
   }
 
   return (
-    <div id="physical-fitness-test-parq" className="w-full min-h-screen max-h-fit">
+    <div id="physical-fitness-test-parq" className="w-full min-h-[100dvh] max-h-fit bg-[#eef4ff] text-[#111c4e]">
       {errorMessage && (
         <AlertMessage
           text={errorMessage}
@@ -302,16 +302,16 @@ export default function PhysicalActivityReadinessQuestionnaire() {
           onCancel={() => dispatch({ type: 'clear-error' })}
         />
       )}
-      <PageHeading text="Physical Fitness Test" className="" />
+      <PageHeading text="Physical Fitness Test" className="bg-[#111c4e] text-white border-[#111c4e] [&_h1]:text-white [&_p]:text-[#dce8ff]" />
       <div id="physical-fitness-test-parq-container" className="content-container">
         <h2 id="heading" className="font-heading text-2xl text-center w-full lg:text-4xl lg:self-start! lg:text-left">
           Physical Activity Readiness Questionnaire (PAR-Q)
         </h2>
-        <hr className="border-1 border-primary-yellow yellow w-[50%] self-start mt-2 lg:w-[20%]" />
-        <div id="physical-fitness-test-parq-content" className="apply-drop-shadow w-full flex flex-col justify-center items-center mt-5 font-content text-lg space-y-5 lg:mt-10">
-          <div id="instructions" className="w-[95%]">
-            <p>Directions</p>
-            <hr className="mb-7" />
+        <hr className="border-1 border-primary-yellow w-[50%] self-start mt-2 lg:w-[20%]" />
+        <div id="physical-fitness-test-parq-content" className="w-full flex flex-col justify-center items-center mt-5 font-content text-lg space-y-5 lg:mt-10">
+          <div id="instructions" className="w-[95%] rounded-2xl border border-[#c4d4f2] bg-white p-6 shadow-[0_12px_30px_rgba(17,28,78,0.08)] lg:p-8">
+            <p className="font-semibold">Directions</p>
+            <hr className="my-4 border-[#d9e3f5]" />
             <ol className="list-decimal ml-7 text-sm lg:text-base">
               <li>Take the Physical Activity Readiness Questionnaire (PAR-Q).</li>
               <li>
@@ -321,13 +321,13 @@ export default function PhysicalActivityReadinessQuestionnaire() {
               </li>
             </ol>
           </div>
-          <div id="information" className="w-[95%] min-h-10 flex flex-col space-y-2 text-sm lg:text-base">
-            <p className="text-base">PHYSICAL INFORMATION</p>
-            <hr className="mb-7" />
-            <div className="flex flex-row space-x-5">
-              <p>Gender</p>
+          <div id="information" className="w-[95%] min-h-10 flex flex-col space-y-4 rounded-2xl border border-[#c4d4f2] bg-[#dce8ff] p-6 text-sm lg:p-8 lg:text-base">
+            <p className="text-base font-semibold tracking-wide">PHYSICAL INFORMATION</p>
+            <hr className="border-[#b7c9ed]" />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+              <p className="font-semibold">Gender</p>
               {(['Male', 'Female'] as const).map((genderOption) => (
-                <label key={genderOption}>
+                <label key={genderOption} className="flex items-center gap-2">
                   <input
                     type="radio"
                     name="gender"
@@ -359,7 +359,7 @@ export default function PhysicalActivityReadinessQuestionnaire() {
                   )
                 }
                 value={physicalFitnessData.category}
-                className="border-1 border-[#8B8989]! w-full font-content px-1 rounded-sm mt-0.5"
+                className="mt-1 w-full rounded-lg border border-[#8b8989] bg-white px-3 py-2 font-content text-[#111c4e] outline-none focus:border-[#004aad] focus:ring-2 focus:ring-[#6596f7]"
               >
                 <option disabled value="">--Select one option--</option>
                 {physicalFitnessData.gender === 'Male' && (
@@ -377,16 +377,16 @@ export default function PhysicalActivityReadinessQuestionnaire() {
               </select>
             </label>
           </div>
-          <div id="questions" className="w-[95%] min-h-10 text-sm lg:text-base">
+          <div id="questions" className="w-[95%] min-h-10 rounded-2xl border border-[#c4d4f2] bg-white p-6 text-sm shadow-[0_12px_30px_rgba(17,28,78,0.08)] lg:p-8 lg:text-base">
             <p className="text-base">PHYSICAL ACTIVITY READINESS QUESTIONNAIRE (PAR-Q)</p>
-            <hr className="mb-7" />
+            <hr className="my-4 border-[#d9e3f5]" />
             <ol className="list-decimal ml-7">
               {QUESTIONS.map((question, index) => (
-                <li key={question} className="mb-4">
+                <li key={question} className="mb-5 rounded-xl border-l-4 border-[#ffbc13] bg-[#f7faff] p-4 pl-5">
                   {question}
                   <div className="flex flex-col mt-2">
                     {(['Yes', 'No'] as const).map((option) => (
-                      <label key={option} className="mb-2 lg:mb-0">
+                      <label key={option} className="mb-2 flex items-center gap-2 lg:mb-0">
                         <input
                           type="radio"
                           name={`radioQuestion${index}`}
@@ -408,8 +408,8 @@ export default function PhysicalActivityReadinessQuestionnaire() {
               ))}
             </ol>
           </div>
-          <div id="button-container" className="w-[95%] drop-shadow-none! border-0! flex justify-end p-0! mb-5">
-            <button className="px-10 py-3 bg-secondary-dark-blue text-white hover:brightness-70 cursor-pointer" onClick={handleSubmit}>
+          <div id="button-container" className="w-[95%] flex justify-end p-0 mb-5">
+            <button className="rounded-lg bg-secondary-dark-blue px-10 py-3 font-semibold text-white shadow-[0_8px_18px_rgba(17,28,78,0.2)] transition hover:bg-[#004aad] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#ffbc13] focus:ring-offset-2 cursor-pointer" onClick={handleSubmit}>
               Submit
             </button>
           </div>

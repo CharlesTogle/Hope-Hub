@@ -71,13 +71,6 @@ Deno.test({
         throw new Error("Expected exactly 10 concurrent IP-bucket requests to be allowed");
       }
 
-      const separateEndpoint = await checkRateLimit(
-        "registration",
-        "198.51.100.1",
-        `${suffix}@example.com`,
-      );
-      if (!separateEndpoint.allowed) throw new Error("Expected separate endpoint bucket to be independent");
-
       await updateLoginWindow(1);
       const expiringKey = `expiry-${suffix}@example.com`;
       await checkRateLimit("login", "192.0.2.1", expiringKey);

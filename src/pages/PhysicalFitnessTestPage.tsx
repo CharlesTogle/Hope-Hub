@@ -138,7 +138,7 @@ export function PhysicalFitnessTestPage() {
 
   return (
     <div id="physical-fitness-test-container">
-      <PageHeading text="Physical Fitness Test" />
+      <PageHeading text="Physical Fitness Test" className="bg-[#111c4e] text-white border-[#111c4e] [&_h1]:text-white [&_p]:text-[#dce8ff]" />
       <div id="physical-fitness-content" className="content-container w-full! mb-10">
         <PhysicalFitnessTest
           index={testIndex}

@@ -14,15 +14,15 @@ const TipsAndInterpretation = ({
   return (
     <div
       id='interpretation-and-tips'
-      className='border-2 p-5 border-black rounded-2xl relative lg:p-10 overflow-x-hidden'
+      className='relative overflow-x-hidden rounded-2xl border border-[#c4d4f2] bg-white p-5 text-[#111c4e] shadow-[0_14px_35px_rgba(17,28,78,0.09)] lg:p-10'
     >
       <div id='heading' className='flex flex-row items-center justify-between'>
         <h1 className='text-3xl font-md mb-3 font-bold font-content pr-2'>
           Interpretation
         </h1>
-        <hr className='w-[50%] border-1 border-black -mr-10' />
+        <hr className='-mr-10 w-[50%] border-1 border-primary-yellow' />
       </div>
-      <hr className='w-[50%] border-1 border-black mb-1' />
+      <hr className='mb-1 w-[50%] border-1 border-primary-yellow' />
       <div id='interpretation' className='mb-3'>
         <h2 className='font-semibold text-lg font-content'>{testName}</h2>
         {testResults.reps && (
@@ -41,7 +41,7 @@ const TipsAndInterpretation = ({
           )}
         </ul>
       </div>
-      <hr className='-ml-10 border-1 border-black w-[50%]' />
+      <hr className='-ml-10 w-[50%] border-1 border-[#c4d4f2]' />
     </div>
   );
 };

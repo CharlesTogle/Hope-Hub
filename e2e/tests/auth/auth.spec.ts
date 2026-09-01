@@ -153,6 +153,46 @@ test.describe('Auth — Register', () => {
 
     expect(page.url()).toContain('register');
   });
+
+  test('registration uses Supabase Auth directly instead of the registration Edge Function', async ({ page }) => {
+    let registrationFunctionCalled = false;
+    let signupRequest: Record<string, unknown> | undefined;
+
+    await page.route('**/functions/v1/registration', async (route) => {
+      registrationFunctionCalled = true;
+      await route.abort();
+    });
+    await page.route('**/auth/v1/signup**', async (route) => {
+      signupRequest = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          user: {
+            id: '00000000-0000-0000-0000-000000000001',
+            email: 'student@example.com',
+          },
+          session: null,
+        }),
+      });
+    });
+
+    await page.goto(APP_ROUTES.auth.register);
+    await page.fill('input[placeholder="Email"]', 'student@example.com');
+    await page.fill('input[placeholder="Name"]', 'Integration Student');
+    await page.fill('input[placeholder="Password"]', 'password123');
+    await page.fill('input[placeholder="Confirm Password"]', 'password123');
+    await page.check('#consent-checkbox');
+    await page.click('button:has-text("Sign Up")');
+
+    await expect(page.getByText('Verification has been sent to your email')).toBeVisible();
+    expect(registrationFunctionCalled).toBe(false);
+    expect(signupRequest).toMatchObject({
+      email: 'student@example.com',
+      password: 'password123',
+      data: { fullName: 'Integration Student', userType: 'student' },
+    });
+  });
 });
 
 test.describe('Auth — Forgot Password', () => {

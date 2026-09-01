@@ -28,15 +28,6 @@ export async function fetchAuthenticatedProfile(): Promise<AuthSessionData> {
     };
   }
 
-  const { error: provisioningError } = await supabase.rpc('ensure_current_user_data');
-  if (provisioningError) {
-    logger.error('fetchAuthenticatedProfile data provisioning failed', provisioningError, { userId: session.user.id });
-    return {
-      userId: null,
-      profile: null,
-    };
-  }
-
   const { data, error } = await supabase
     .from('profile')
     .select('uuid, user_type, full_name, email')

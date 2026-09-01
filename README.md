@@ -144,17 +144,12 @@ must be supplied to the Vite dev server or build process.
 
 The repo includes multiple Supabase-related pieces:
 
-- [db/schema.sql](./db/schema.sql): current database schema dump
 - [supabase/config.toml](./supabase/config.toml): local Supabase CLI configuration
 - [supabase/functions/login/index.ts](./supabase/functions/login/index.ts): login edge function source
-- [supabase/functions/registration/index.ts](./supabase/functions/registration/index.ts): registration edge function source
 
-Current application flows rely primarily on the browser Supabase client in [src/client/supabase.js](./src/client/supabase.js) and database RPCs described in the PRD:
+Registration uses the browser Supabase client and an `auth.users` database trigger to create a profile and related rows. The ordered files in [supabase/migrations](./supabase/migrations) are the database source of truth.
 
-- `register_user(...)`
-- `retrieve_students_by_class(...)`
-
-This repo currently contains a schema dump, not an ordered migration set.
+Run `pnpm config:push` when deploying changes to `supabase/config.toml`, including Auth rate limits.
 
 ## Deployment
 
