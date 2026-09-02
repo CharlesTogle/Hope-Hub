@@ -197,7 +197,7 @@ export const LowerBodyVideos: WorkoutVideo[] = [
         'Rush the movement or lose balance.',
       ],
     },
-    videoLink: 'https://www.youtube.com/embed/BKTAwDzybPI?si=L15IY3EqOtIfUtMA',
+    videoLink: 'https://www.youtube.com/embed/GFUaSY8B_y8?si=NRsqYTIHgzkRXdv7',
     uploadDate: '2025-07-23T14:00:00.000Z',
   },
 ];
