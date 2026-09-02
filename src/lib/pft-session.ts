@@ -1,5 +1,5 @@
 import { PhysicalFitnessData } from '@/utilities/PhysicalFitnessData';
-import type { PFTColumnName, PFTSessionData } from '@/types/physical-fitness';
+import type { PFTColumnName, PFTSessionData, PFTSessionKey } from '@/types/physical-fitness';
 
 export const PFT_STORAGE_KEY = 'physicalFitnessData';
 export const PFT_TIMEOUT_SECONDS = 1200;
@@ -26,6 +26,26 @@ export function isFinishedTestIndexes(
 
 export function isFinishedTestSession(session: PFTSessionData | null): boolean {
   return isFinishedTestIndexes(session?.finishedTestIndex);
+}
+
+const pftResultKeys: PFTSessionKey[] = [
+  'bmiWeight',
+  'bmiHeight',
+  'zipperTestRight',
+  'zipperTestLeft',
+  'sitAndReachFirst',
+  'sitAndReachSecond',
+  'preStepTest',
+  'stepTest',
+  'pushUp',
+  'basicPlank',
+];
+
+export function isPftSummaryReady(session: PFTSessionData | null): boolean {
+  return (
+    isFinishedTestSession(session) &&
+    pftResultKeys.every((key) => session?.[key] != null)
+  );
 }
 
 export function isPftQuizUnlocked(

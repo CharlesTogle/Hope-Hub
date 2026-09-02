@@ -54,6 +54,21 @@ export function PhysicalFitnessTestPage() {
   const pftStatus = useMemo(() => pftRecord ? derivePftStatus(pftRecord) : null, [pftRecord]);
 
   useEffect(() => {
+    if (pftFetching || !pftRecord || isTeacher || !pftStatus) {
+      return;
+    }
+
+    const serverSession =
+      pftStatus.testType === 'pre_physical_fitness_test'
+        ? pftRecord.pre_physical_fitness_test
+        : pftRecord.post_physical_fitness_test;
+
+    if (serverSession) {
+      setSessionData(serverSession);
+    }
+  }, [isTeacher, pftFetching, pftRecord, pftStatus, setSessionData]);
+
+  useEffect(() => {
     if (pftFetching || !userId || isTeacher) {
       return;
     }

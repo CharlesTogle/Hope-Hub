@@ -15,7 +15,7 @@ import {
   type PFTSummaryRouteType,
 } from '@/queries/pft-queries';
 import { fetchTeacherClassOwnership } from '@/queries/dashboard-queries';
-import { isFinishedTestIndexes } from '@/lib/pft-session';
+import { isPftSummaryReady } from '@/lib/pft-session';
 
 export function PhysicalFitnessTestSummary() {
   const { testType, classCode, studentId } = useParams();
@@ -74,8 +74,8 @@ export function PhysicalFitnessTestSummary() {
       }
     : null;
   const pftResult = summaryRow?.pft_data ?? null;
-  const dataResults = pftResult ? getSummary(pftResult) : null;
-  const isCompleted = isFinishedTestIndexes(pftResult?.finishedTestIndex);
+  const isCompleted = isPftSummaryReady(pftResult);
+  const dataResults = isCompleted && pftResult ? getSummary(pftResult) : null;
 
   if (!isValidTestType) {
     return (

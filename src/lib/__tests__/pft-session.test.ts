@@ -7,6 +7,7 @@ import {
   derivePftStatus,
   resetPftProgress,
   isPftQuizUnlocked,
+  isPftSummaryReady,
 } from '@/lib/pft-session';
 import type { PFTSessionData } from '@/types/physical-fitness';
 import type { PFTRecordRow } from '@/lib/pft-session';
@@ -98,6 +99,24 @@ describe('isPftQuizUnlocked', () => {
   it('keeps the PFT quiz locked until both tests are complete', () => {
     expect(isPftQuizUnlocked(done, null)).toBe(false);
     expect(isPftQuizUnlocked(done, done)).toBe(true);
+  });
+});
+
+describe('isPftSummaryReady', () => {
+  it('rejects a finished index list when a result is missing', () => {
+    const session = { ...PhysicalFitnessData, finishedTestIndex: finishedTestIndexes };
+
+    expect(isPftSummaryReady(session as unknown as PFTSessionData)).toBe(false);
+  });
+
+  it('rejects a finished index list when a result is null', () => {
+    const session = {
+      ...PhysicalFitnessData,
+      finishedTestIndex: finishedTestIndexes,
+      pushUp: null,
+    };
+
+    expect(isPftSummaryReady(session as unknown as PFTSessionData)).toBe(false);
   });
 });
 

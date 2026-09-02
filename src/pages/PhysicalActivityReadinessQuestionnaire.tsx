@@ -234,8 +234,12 @@ export default function PhysicalActivityReadinessQuestionnaire() {
         ? preFinishedIndexes
         : postFinishedIndexes;
 
+    const currentTestSession =
+      testType === 'pre_physical_fitness_test'
+        ? pftRecord.pre_physical_fitness_test
+        : pftRecord.post_physical_fitness_test;
     const updatedData = {
-      ...PhysicalFitnessData,
+      ...(currentTestSession ?? PhysicalFitnessData),
       gender: physicalFitnessData.gender,
       category: physicalFitnessData.category,
       isPARQFinished: true,
