@@ -1,13 +1,11 @@
 const allowedOrigins = [
-  'https://hope-hub-fitness.vercel.app',
-  'http://localhost:5173',
-  'http://localhost:4173',
+  'https://hopehub.stream'
 ];
 
 function getAllowOrigin(request: Request): string {
   const origin = request.headers.get('origin') ?? '';
   if (allowedOrigins.includes(origin)) return origin;
-  return 'https://hope-hub-fitness.vercel.app';
+  return 'https://hopehub.stream';
 }
 
 export function corsHeadersFor(request: Request): Record<string, string> {
