@@ -8,7 +8,7 @@ import ProfileSidebar from '@/components/dashboard/ProfileSidebar';
 import { useProfilePicture } from '@/hooks/use-profile-picture';
 import DashboardContainer from '@/components/dashboard/DashboardContainer';
 import { onProfileChange as onProfileChangeUtil } from '@/utilities/onProfileChange';
-import { LogOut } from 'lucide-react';
+import { ArrowRight, BookOpen, ClipboardList, Dumbbell, LogOut } from 'lucide-react';
 import QuizScoreTable from '@/components/dashboard/QuizScoreTable';
 import Loading from '@/components/Loading';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -179,51 +179,85 @@ export default function StudentDashboard() {
             onClassJoinOpen={() => setIsJoiningClass(true)}
             confirmingLeave={confirmingLeave}
             />
-            <div id="statistics" className="grid grid-cols-2 gap-5">
-              <div id="lectures">
-                {classCode ? (
+            {classCode ? (
+              <>
+                <div id="statistics" className="grid grid-cols-2 gap-5">
+                  <div id="lectures">
                   <Statistics
                     progress={lectureProgressData ?? { completed: 0, incomplete: 0, pending: 0, total: 0 }}
                     type="Lectures"
                   />
-                ) : (
-                  <p className='p-5 text-center font-content text-primary-blue'>
-                    Please Join a Class first before accessing lectures
-                  </p>
-                )}
-              </div>
-              <div id="quizzes">
-                {classCode ? (
+                  </div>
+                  <div id="quizzes">
                   <Statistics
                     progress={quizProgressStats ?? { completed: 0, incomplete: 0, pending: 0, total: 0 }}
                     type="Quizzes"
                   />
-                ) : (
-                  <p className='p-5 text-center font-content text-primary-blue'>
-                    Please Join a Class first before accessing quizzes
+                  </div>
+                </div>
+                <div id="quiz-scores" className="w-full text-center">
+                  <QuizScoreTable quizData={quizData} />
+                </div>
+                <div id="physical-fitness-records" className="w-full text-center grid grid-cols-2 gap-5">
+                  <button
+                    className="lg:p-7 lg:text-base text-xs p-5 bg-neutral-dark-blue text-white font-content rounded-md hover:brightness-90 cursor-pointer disabled:brightness-80 disabled:cursor-not-allowed"
+                    disabled={!pftData?.preFinished}
+                    onClick={() => pftData?.preFinished && navigate('/physical-fitness-test/summary/pre-test')}
+                  >
+                    VIEW PFT - PRE TEST RECORD
+                  </button>
+                  <button
+                    className="lg:p-7 lg:text-base text-xs p-5 bg-neutral-dark-blue text-white font-content rounded-md hover:brightness-90 cursor-pointer disabled:brightness-80 disabled:cursor-not-allowed"
+                    disabled={!pftData?.postFinished}
+                    onClick={() => pftData?.postFinished && navigate('/physical-fitness-test/summary/post-test')}
+                  >
+                    VIEW PFT - POST TEST RECORD
+                  </button>
+                </div>
+              </>
+            ) : (
+              <section
+                aria-labelledby='class-access-heading'
+                className='relative overflow-hidden rounded-md border border-primary-blue/15 bg-white p-6 font-content shadow-sm lg:p-10'
+              >
+                <div className='absolute -right-12 -top-14 h-44 w-44 rounded-full border-[18px] border-primary-yellow/20' />
+                <div className='relative max-w-2xl'>
+                  <p className='mb-3 font-heading text-sm tracking-[0.2em] text-primary-yellow'>
+                    YOUR NEXT STEP
                   </p>
-                )}
-              </div>
-            </div>
-          <div id="quiz-scores" className="w-full text-center">
-            <QuizScoreTable quizData={quizData} />
-          </div>
-          <div id="physical-fitness-records" className="w-full text-center grid grid-cols-2 gap-5">
-            <button
-              className="lg:p-7 lg:text-base text-xs p-5 bg-neutral-dark-blue text-white font-content rounded-md hover:brightness-90 cursor-pointer disabled:brightness-80 disabled:cursor-not-allowed"
-              disabled={!pftData?.preFinished}
-              onClick={() => pftData?.preFinished && navigate('/physical-fitness-test/summary/pre-test')}
-            >
-              VIEW PFT - PRE TEST RECORD
-            </button>
-            <button
-              className="lg:p-7 lg:text-base text-xs p-5 bg-neutral-dark-blue text-white font-content rounded-md hover:brightness-90 cursor-pointer disabled:brightness-80 disabled:cursor-not-allowed"
-              disabled={!pftData?.postFinished}
-              onClick={() => pftData?.postFinished && navigate('/physical-fitness-test/summary/post-test')}
-            >
-              VIEW PFT - POST TEST RECORD
-            </button>
-          </div>
+                  <h2 id='class-access-heading' className='font-heading text-3xl text-secondary-dark-blue lg:text-4xl'>
+                    A class opens your learning space.
+                  </h2>
+                  <p className='mt-4 max-w-xl text-sm leading-7 text-neutral-dark-blue lg:text-base'>
+                    Join with the six-character code from your teacher to start lessons, take quizzes, and record your physical fitness test.
+                  </p>
+                  <button
+                    type='button'
+                    onClick={() => setIsJoiningClass(true)}
+                    className='mt-7 inline-flex items-center gap-3 rounded-sm bg-[#DB4E34] px-5 py-3 font-semibold text-white transition hover:brightness-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DB4E34]'
+                  >
+                    Join a Class <ArrowRight size={18} aria-hidden='true' />
+                  </button>
+                </div>
+                <div className='relative mt-10 grid gap-3 border-t border-primary-blue/10 pt-6 md:grid-cols-3'>
+                  <div className='border-l-2 border-primary-yellow bg-gray-background p-4'>
+                    <BookOpen className='mb-5 text-primary-blue' aria-hidden='true' />
+                    <h3 className='font-heading text-lg text-secondary-dark-blue'>Lectures</h3>
+                    <p className='mt-2 text-xs leading-5 text-neutral-dark-blue'>Please Join a Class first before accessing lectures</p>
+                  </div>
+                  <div className='border-l-2 border-primary-yellow bg-gray-background p-4'>
+                    <ClipboardList className='mb-5 text-primary-blue' aria-hidden='true' />
+                    <h3 className='font-heading text-lg text-secondary-dark-blue'>Quizzes</h3>
+                    <p className='mt-2 text-xs leading-5 text-neutral-dark-blue'>Please Join a Class first before accessing quizzes</p>
+                  </div>
+                  <div className='border-l-2 border-primary-yellow bg-gray-background p-4'>
+                    <Dumbbell className='mb-5 text-primary-blue' aria-hidden='true' />
+                    <h3 className='font-heading text-lg text-secondary-dark-blue'>PFT</h3>
+                    <p className='mt-2 text-xs leading-5 text-neutral-dark-blue'>Your physical fitness test becomes available after you join.</p>
+                  </div>
+                </div>
+              </section>
+            )}
         </div>
         <div
           id="profile"
