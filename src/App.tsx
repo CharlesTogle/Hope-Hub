@@ -30,6 +30,7 @@ import StudentDashboard from './pages/Dashboard/StudentDashboard';
 import HamburgerMenu from './assets/icons/hamburger_icon.png';
 import AccountVerification from './pages/Auth/AccountVerification';
 import TeacherDashboard from './pages/Dashboard/TeacherDashboard';
+import ClassAccessRequired from './pages/ClassAccessRequired';
 import BMICalculator from './pages/HealthCalculators/BMICalculator';
 import BMRCalculator from './pages/HealthCalculators/BMRCalculator';
 import IBWCalculator from './pages/HealthCalculators/IBWCalculator';
@@ -42,8 +43,11 @@ import Loading from './components/Loading';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { Toaster } from '@/components/ui/sonner';
 import supabase from '@/client/supabase';
-import { authKeys } from '@/lib/query-keys';
+import { authKeys, classKeys } from '@/lib/query-keys';
 import { fetchAuthenticatedProfile } from '@/queries/auth-queries';
+import { fetchStudentClassCode } from '@/queries/dashboard-queries';
+import { getUserFacingError } from '@/utilities/user-facing-errors';
+import ErrorMessage from '@/components/utilities/ErrorMessage';
 import { useAuthStore } from '@/store/auth-store';
 import { useUIStore } from '@/store/ui-store';
 
@@ -105,6 +109,33 @@ function TeacherRoute() {
   if (profile.user_type !== 'teacher') {
     return <Navigate to="/dashboard" replace />;
   }
+
+  return <Outlet />;
+}
+
+function StudentClassAccessRoute() {
+  const profile = useAuthStore((state) => state.profile);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const userId = profile?.uuid ?? '';
+  const classCodeQuery = useQuery({
+    queryKey: classKeys.studentCode(userId),
+    queryFn: () => fetchStudentClassCode(userId),
+    enabled: !!userId && profile?.user_type === 'student',
+  });
+
+  if (isLoading || classCodeQuery.isLoading || classCodeQuery.isFetching) return <Loading />;
+  if (!profile) return <Navigate to='/auth/login' replace />;
+  if (profile.user_type === 'teacher') return <Outlet />;
+  if (classCodeQuery.isError) {
+    return (
+      <ErrorMessage
+        title="We couldn't check your class access"
+        description={getUserFacingError(classCodeQuery.error, 'load')}
+        onRetry={() => void classCodeQuery.refetch()}
+      />
+    );
+  }
+  if (!classCodeQuery.data) return <ClassAccessRequired />;
 
   return <Outlet />;
 }
@@ -271,30 +302,32 @@ function App() {
             <Route path="heartrate" element={<HeartRateCalculator />} />
           </Route>
           <Route element={<ProtectedRoute />}>
-            <Route path="lectures">
-              <Route index element={<Lectures />} />
-              <Route path="lecture/:lessonNumber/" element={<LecturePage />} />
-            </Route>
-            <Route
-              path="physical-fitness-test"
-              element={<PhysicalFitnessWrapper />}
-            >
+            <Route element={<StudentClassAccessRoute />}>
+              <Route path="lectures">
+                <Route index element={<Lectures />} />
+                <Route path="lecture/:lessonNumber/" element={<LecturePage />} />
+              </Route>
               <Route
-                path="parq"
-                element={<PhysicalActivityReadinessQuestionnaire />}
-              />
-              <Route
-                path="test/:testIndex"
-                element={<PhysicalFitnessTestPage />}
-              />
-              <Route
-                path="summary/:testType"
-                element={<PhysicalFitnessTestSummary />}
-              />
-            </Route>
-            <Route path="quizzes">
-              <Route index element={<QuizDashboard />} />
-              <Route path="quiz/:quizId" element={<Quiz />} />
+                path="physical-fitness-test"
+                element={<PhysicalFitnessWrapper />}
+              >
+                <Route
+                  path="parq"
+                  element={<PhysicalActivityReadinessQuestionnaire />}
+                />
+                <Route
+                  path="test/:testIndex"
+                  element={<PhysicalFitnessTestPage />}
+                />
+                <Route
+                  path="summary/:testType"
+                  element={<PhysicalFitnessTestSummary />}
+                />
+              </Route>
+              <Route path="quizzes">
+                <Route index element={<QuizDashboard />} />
+                <Route path="quiz/:quizId" element={<Quiz />} />
+              </Route>
             </Route>
             <Route path="dashboard" element={<ProfileWrapper />} />
             <Route element={<TeacherRoute />}>

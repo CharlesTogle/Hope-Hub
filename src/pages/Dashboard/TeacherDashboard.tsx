@@ -55,7 +55,10 @@ export default function TeacherDashboard() {
 
   const removeMutation = useMutation({
     mutationFn: (classCode: string) => removeTeacherClassCode(userID ?? '', classCode),
-    onSuccess: () => {
+    onSuccess: (_data, classCode) => {
+      queryClient.setQueryData<ClassCodeData[]>(classKeys.codes(userID ?? ''), (current) =>
+        current?.filter((code) => code.class_code !== classCode),
+      );
       queryClient.invalidateQueries({ queryKey: classKeys.codes(userID ?? '') });
     },
     onError: () => toast.error('Failed to remove class. Please try again.'),
@@ -69,12 +72,7 @@ export default function TeacherDashboard() {
   };
 
   const handleRemoveClass = (classCode: string) => {
-    if (confirmingRemove !== classCode) {
-      setConfirmingRemove(classCode);
-      return;
-    }
-    setConfirmingRemove(null);
-    removeMutation.mutate(classCode);
+    setConfirmingRemove(classCode);
   };
 
   const handleLogout = async () => {
@@ -95,6 +93,21 @@ export default function TeacherDashboard() {
             onAdd={handleClassCreated}
             setModalShown={setShowAddClassModal}
           />
+        )}
+        {confirmingRemove && (
+          <div className='fixed inset-0 z-999 flex items-center justify-center px-5'>
+            <div className='absolute inset-0 bg-black/60' onClick={() => setConfirmingRemove(null)} />
+            <div role='dialog' aria-modal='true' aria-labelledby='retire-class-title' className='relative max-w-lg bg-white p-6 rounded-lg shadow-xl font-content'>
+              <h2 id='retire-class-title' className='text-2xl font-heading text-primary-blue'>Retire this class?</h2>
+              <p className='mt-4'>
+                Members will immediately lose access to lectures, quizzes, and PFT. Lecture and quiz history remains, and PFT results are retained but inactive under this permanently retired code.
+              </p>
+              <div className='flex justify-end gap-3 mt-6'>
+                <button type='button' className='px-4 py-2 border border-accent-blue text-accent-blue rounded-sm' onClick={() => setConfirmingRemove(null)} disabled={removeMutation.isPending}>Cancel</button>
+                <button type='button' className='px-4 py-2 bg-[#DB4E34] text-white rounded-sm' onClick={() => { const code = confirmingRemove; setConfirmingRemove(null); removeMutation.mutate(code); }} disabled={removeMutation.isPending}>Permanently Retire Class</button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
       <DashboardContainer>
@@ -127,7 +140,6 @@ export default function TeacherDashboard() {
                 classCode={code.class_code}
                 classColor={code.class_color}
                 onRemove={() => handleRemoveClass(code.class_code)}
-                confirmingRemove={confirmingRemove === code.class_code}
               />
             ))}
           </div>

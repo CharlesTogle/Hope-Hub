@@ -24,13 +24,10 @@ export async function doesTeacherClassCodeExist(
 }
 
 export async function joinStudentClass(
-  userId: string,
+  _userId: string,
   classCode: string,
 ): Promise<void> {
-  const { error } = await supabase
-    .from('student_class_code')
-    .update({ class_code: classCode })
-    .eq('uuid', userId);
+  const { error } = await supabase.rpc('join_class', { p_class_code: classCode });
 
   if (error) {
     throw error;
@@ -38,10 +35,8 @@ export async function joinStudentClass(
 }
 
 export async function leaveStudentClass(userId: string): Promise<void> {
-  const { error } = await supabase
-    .from('student_class_code')
-    .update({ class_code: null })
-    .eq('uuid', userId);
+  void userId;
+  const { error } = await supabase.rpc('leave_class');
 
   if (error) {
     throw error;
@@ -61,7 +56,7 @@ function generateClassCode(): string {
 }
 
 async function isClassCodeUnique(code: string): Promise<boolean> {
-  const { data, error } = await supabase.rpc('class_code_exists', {
+  const { data, error } = await supabase.rpc('class_code_is_available', {
     p_class_code: code,
   });
 
@@ -69,7 +64,7 @@ async function isClassCodeUnique(code: string): Promise<boolean> {
     return false;
   }
 
-  return !data;
+  return data ?? false;
 }
 
 async function generateUniqueClassCode(): Promise<string> {
@@ -130,11 +125,10 @@ export async function removeTeacherClassCode(
   teacherId: string,
   classCode: string,
 ): Promise<void> {
-  const { error } = await supabase
-    .from('teacher_class_code')
-    .delete()
-    .eq('class_code', classCode)
-    .eq('uuid', teacherId);
+  void teacherId;
+  const { error } = await supabase.rpc('retire_class', {
+    p_class_code: classCode,
+  });
 
   if (error) {
     throw error;

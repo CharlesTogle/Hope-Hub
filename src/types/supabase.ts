@@ -134,6 +134,26 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['physical_fitness_test']['Row']>;
         Relationships: [];
       };
+      class_physical_fitness_test: {
+        Row: {
+          uuid: string;
+          class_code: string;
+          pre_physical_fitness_test: PFTSessionData | null;
+          post_physical_fitness_test: PFTSessionData | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          uuid: string;
+          class_code: string;
+          pre_physical_fitness_test?: PFTSessionData | null;
+          post_physical_fitness_test?: PFTSessionData | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['class_physical_fitness_test']['Row']>;
+        Relationships: [];
+      };
       teacher_class_code: {
         Row: {
           id: number;
@@ -142,6 +162,7 @@ export interface Database {
           class_code: string | null;
           class_name: string | null;
           class_color: string | null;
+          retired_at: string | null;
         };
         Insert: {
           id?: number;
@@ -150,6 +171,7 @@ export interface Database {
           class_code?: string | null;
           class_name?: string | null;
           class_color?: string | null;
+          retired_at?: string | null;
         };
         Update: Partial<Database['public']['Tables']['teacher_class_code']['Row']>;
         Relationships: [];
@@ -166,10 +188,15 @@ export interface Database {
         Args: { [key: string]: unknown; p_class_code: string };
         Returns: boolean;
       };
+      class_code_is_available: {
+        Args: { [key: string]: unknown; p_class_code: string };
+        Returns: boolean;
+      };
       get_pft_summary_for_viewer: {
         Args: {
           [key: string]: unknown;
           p_student_uuid: string;
+          p_class_code: string;
           p_test_type: string;
         };
         Returns: {
@@ -181,6 +208,18 @@ export interface Database {
       retrieve_students_by_class: {
         Args: { [key: string]: unknown; class_code_input: string };
         Returns: RawStudentData[];
+      };
+      join_class: {
+        Args: { [key: string]: unknown; p_class_code: string };
+        Returns: undefined;
+      };
+      leave_class: {
+        Args: { [key: string]: unknown };
+        Returns: undefined;
+      };
+      retire_class: {
+        Args: { [key: string]: unknown; p_class_code: string };
+        Returns: undefined;
       };
     };
     Views: {};

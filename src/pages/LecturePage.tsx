@@ -1,12 +1,12 @@
 import { Lessons } from '@/utilities/Lessons';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import PageHeading from '@/components/PageHeading';
 import LecturePDF from '@/components/lectures/LecturePDF';
 import ErrorMessage from '@/components/utilities/ErrorMessage';
 import { toast } from 'sonner';
 import supabase from '@/client/supabase';
-import LectureProgress from '@/utilities/LectureProgress';
+import LectureProgress, { shouldStartPendingLectureProgressUpdate } from '@/utilities/LectureProgress';
 import Loading from '@/components/Loading';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { lectureKeys, quizKeys } from '@/lib/query-keys';
@@ -23,6 +23,7 @@ export default function LecturePage() {
   const selectedLessonNumber = Number(lessonNumber);
   const queryClient = useQueryClient();
   const [hasTimerEnded, setHasTimerEnded] = useState(false);
+  const pendingProgressAttemptRef = useRef<string | null>(null);
 
   const lessonDetails = Lessons.find((lesson) => lesson.key === selectedLessonNumber);
 
@@ -79,7 +80,15 @@ export default function LecturePage() {
       return;
     }
 
-    if (currentLectureProgress?.status === 'Incomplete') {
+    const pendingProgressAttempt = `${userId}:${selectedLessonNumber}`;
+    if (
+      currentLectureProgress?.status === 'Incomplete' &&
+      shouldStartPendingLectureProgressUpdate(
+        pendingProgressAttemptRef.current,
+        pendingProgressAttempt,
+      )
+    ) {
+      pendingProgressAttemptRef.current = pendingProgressAttempt;
       pendingMutation.mutate();
     }
   }, [

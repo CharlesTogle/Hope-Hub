@@ -14,7 +14,7 @@ import {
   fetchPftSummaryForViewer,
   type PFTSummaryRouteType,
 } from '@/queries/pft-queries';
-import { fetchTeacherClassOwnership } from '@/queries/dashboard-queries';
+import { fetchStudentClassCode, fetchTeacherClassOwnership } from '@/queries/dashboard-queries';
 import { isPftSummaryReady } from '@/lib/pft-session';
 
 export function PhysicalFitnessTestSummary() {
@@ -27,6 +27,12 @@ export function PhysicalFitnessTestSummary() {
   const isValidTestType =
     testType === 'pre-test' || testType === 'post-test';
   const targetUserId = isTeacherView ? studentId ?? null : userId;
+  const { data: studentClassCode, isLoading: classLoading } = useQuery({
+    queryKey: ['class', 'student-code', userId ?? ''],
+    queryFn: () => fetchStudentClassCode(userId ?? ''),
+    enabled: !!userId && !isTeacherView,
+  });
+  const summaryClassCode = isTeacherView ? classCode ?? null : studentClassCode ?? null;
 
   const {
     data: hasClassOwnership = false,
@@ -45,7 +51,7 @@ export function PhysicalFitnessTestSummary() {
   const canLoadSummary =
     isValidTestType &&
     !!targetUserId &&
-    (!isTeacherView || (isTeacher && hasClassOwnership));
+    !!summaryClassCode && (!isTeacherView || (isTeacher && hasClassOwnership));
 
   const {
     data: summaryRow,
@@ -54,13 +60,14 @@ export function PhysicalFitnessTestSummary() {
     refetch: refetchSummary,
   } = useQuery({
     queryKey: pftKeys.summary(
-      isTeacherView ? classCode ?? '' : 'self',
+      summaryClassCode ?? '',
       targetUserId ?? '',
       testType ?? '',
     ),
     queryFn: () =>
       fetchPftSummaryForViewer(
         targetUserId ?? '',
+        summaryClassCode ?? '',
         testType as PFTSummaryRouteType,
       ),
     enabled: canLoadSummary,
@@ -97,7 +104,7 @@ export function PhysicalFitnessTestSummary() {
     );
   }
 
-  if (isLoading || ownershipLoading || !userId) return <Loading />;
+  if (isLoading || ownershipLoading || classLoading || !userId) return <Loading />;
   if (ownershipError || isError) {
     return (
       <ErrorMessage

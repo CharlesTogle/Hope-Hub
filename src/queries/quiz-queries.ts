@@ -42,11 +42,19 @@ export async function fetchQuizzesDefault(): Promise<QuizRow[]> {
 }
 
 export async function fetchQuizzesOfUser(user: User): Promise<QuizWithProgress[]> {
-  let { data: pftData } = await supabase
-    .from('physical_fitness_test')
-    .select('*')
+  const { data: membership } = await supabase
+    .from('student_class_code')
+    .select('class_code')
     .eq('uuid', user.id)
     .maybeSingle();
+  const { data: pftData } = membership?.class_code
+    ? await supabase
+        .from('class_physical_fitness_test')
+        .select('pre_physical_fitness_test, post_physical_fitness_test')
+        .eq('uuid', user.id)
+        .eq('class_code', membership.class_code)
+        .maybeSingle()
+    : { data: null };
 
   if (
     isPftQuizUnlocked(

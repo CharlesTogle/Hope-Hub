@@ -133,11 +133,14 @@ export async function fetchStudentClassCode(
 
 export async function fetchStudentPftStatus(
   userId: string,
+  classCode: string | null,
 ): Promise<StudentPftStatus> {
+  if (!classCode) return { preFinished: false, postFinished: false };
   const { data, error } = await supabase
-    .from('physical_fitness_test')
+    .from('class_physical_fitness_test')
     .select('pre_physical_fitness_test, post_physical_fitness_test')
     .eq('uuid', userId)
+    .eq('class_code', classCode)
     .maybeSingle();
 
   if (error) {
@@ -157,7 +160,8 @@ export async function fetchTeacherClassCodes(
   const { data, error } = await supabase
     .from('teacher_class_code')
     .select('class_code, class_name, class_color')
-    .eq('uuid', teacherId);
+    .eq('uuid', teacherId)
+    .is('retired_at', null);
 
   if (error) {
     throw error;

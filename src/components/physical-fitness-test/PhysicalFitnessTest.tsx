@@ -27,6 +27,7 @@ interface PhysicalFitnessTestProps {
   setIsTimeout: (value: boolean) => void;
   testType: PFTColumnName;
   userType: UserType;
+  classCode?: string | null;
 }
 
 interface TestResultsState {
@@ -179,6 +180,7 @@ export default function PhysicalFitnessTest({
   setIsTimeout,
   testType,
   userType,
+  classCode = null,
 }: PhysicalFitnessTestProps) {
   const [viewState, dispatch] = useReducer(
     physicalFitnessTestReducer,
@@ -286,11 +288,11 @@ export default function PhysicalFitnessTest({
       }
 
       setSessionData(updatedData);
-      await savePftSession(userId, testType, updatedData);
-      queryClient.invalidateQueries({ queryKey: pftKeys.session(userId) });
+      await savePftSession(userId, testType, updatedData, classCode, isTeacher);
+      queryClient.invalidateQueries({ queryKey: pftKeys.session(userId, classCode ?? '') });
       queryClient.invalidateQueries({ queryKey: quizKeys.list() });
     },
-    [setSessionData, testType, userId, queryClient],
+    [classCode, isTeacher, setSessionData, testType, userId, queryClient],
   );
 
   const resetForNextStep = useCallback(

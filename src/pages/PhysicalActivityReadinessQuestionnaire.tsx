@@ -19,6 +19,7 @@ import type {
   PFTSessionData,
 } from '@/types/physical-fitness';
 import { getUserFacingError } from '@/utilities/user-facing-errors';
+import { fetchStudentClassCode } from '@/queries/dashboard-queries';
 
 const QUESTIONS = [
   'Has your doctor ever said that you have a heart condition and that you should only do physical activity recommended by a doctor?',
@@ -80,6 +81,7 @@ export default function PhysicalActivityReadinessQuestionnaire() {
   const setPhysicalFitnessData = usePhysicalFitnessStore(
     (state) => state.setSessionData,
   );
+  const clearSessionData = usePhysicalFitnessStore((state) => state.clearSessionData);
   const updateField = usePhysicalFitnessStore((state) => state.updateField);
   const [state, dispatch] = useReducer(parqReducer, undefined, createInitialParqState);
   const [isAlreadyComplete, setIsAlreadyComplete] = useState(false);
@@ -88,7 +90,13 @@ export default function PhysicalActivityReadinessQuestionnaire() {
   const { profile } = useAuthStore();
   const userId = profile?.uuid ?? null;
   const userType = profile?.user_type ?? 'student';
+  const isTeacher = userType === 'teacher';
   const { answers, errorMessage } = state;
+  const { data: classCode, isLoading: classLoading } = useQuery({
+    queryKey: ['class', 'student-code', userId ?? ''],
+    queryFn: () => fetchStudentClassCode(userId ?? ''),
+    enabled: !!userId && !isTeacher,
+  });
 
   const areAllAnswersNo = useMemo(
     () =>
@@ -112,9 +120,9 @@ export default function PhysicalActivityReadinessQuestionnaire() {
     isLoading: pftLoading,
     refetch: refetchPft,
   } = useQuery({
-    queryKey: pftKeys.session(userId ?? ''),
-    queryFn: () => fetchPftRecord(userId ?? ''),
-    enabled: !!userId,
+    queryKey: pftKeys.session(userId ?? '', isTeacher ? '' : classCode ?? ''),
+    queryFn: () => fetchPftRecord(userId ?? '', isTeacher ? null : classCode ?? null, isTeacher),
+    enabled: !!userId && (isTeacher || classCode !== undefined),
     staleTime: 0,
     refetchOnMount: 'always',
   });
@@ -122,6 +130,15 @@ export default function PhysicalActivityReadinessQuestionnaire() {
     () => (pftRecord ? derivePftStatus(pftRecord) : null),
     [pftRecord],
   );
+
+  useEffect(() => {
+    if (isFetching || isTeacher) return;
+    const session = pftStatus?.testType === 'post_physical_fitness_test'
+      ? pftRecord?.post_physical_fitness_test
+      : pftRecord?.pre_physical_fitness_test;
+    if (session) setPhysicalFitnessData(session);
+    else if (!pftRecord) clearSessionData();
+  }, [clearSessionData, isFetching, isTeacher, pftRecord, pftStatus?.testType, setPhysicalFitnessData]);
 
   useEffect(() => {
     if (isFetching || !userId) {
@@ -153,8 +170,8 @@ export default function PhysicalActivityReadinessQuestionnaire() {
     setPhysicalFitnessData(updatedData);
 
     try {
-      await savePftSession(userId, 'pre_physical_fitness_test', updatedData);
-      queryClient.invalidateQueries({ queryKey: pftKeys.session(userId) });
+       await savePftSession(userId, 'pre_physical_fitness_test', updatedData, null, true);
+       queryClient.invalidateQueries({ queryKey: pftKeys.session(userId, '') });
     } catch (error) {
       dispatch({
         type: 'show-error',
@@ -215,18 +232,12 @@ export default function PhysicalActivityReadinessQuestionnaire() {
       return;
     }
 
-    if (!pftRecord) {
-      dispatch({
-        type: 'show-error',
-        message: 'Failed to load test record.',
-      });
-      return;
-    }
-
     const preFinishedIndexes =
-      pftRecord.pre_physical_fitness_test?.finishedTestIndex ?? [];
+      pftRecord?.pre_physical_fitness_test?.finishedTestIndex ??
+      PhysicalFitnessData.finishedTestIndex;
     const postFinishedIndexes =
-      pftRecord.post_physical_fitness_test?.finishedTestIndex ?? [];
+      pftRecord?.post_physical_fitness_test?.finishedTestIndex ??
+      PhysicalFitnessData.finishedTestIndex;
 
     const testType = pftStatus?.testType ?? 'pre_physical_fitness_test';
     const targetFinishedIndexes =
@@ -236,8 +247,8 @@ export default function PhysicalActivityReadinessQuestionnaire() {
 
     const currentTestSession =
       testType === 'pre_physical_fitness_test'
-        ? pftRecord.pre_physical_fitness_test
-        : pftRecord.post_physical_fitness_test;
+        ? pftRecord?.pre_physical_fitness_test
+        : pftRecord?.post_physical_fitness_test;
     const updatedData = {
       ...(currentTestSession ?? PhysicalFitnessData),
       gender: physicalFitnessData.gender,
@@ -251,8 +262,8 @@ export default function PhysicalActivityReadinessQuestionnaire() {
     setPhysicalFitnessData(updatedData);
 
     try {
-      await savePftSession(userId, testType, updatedData);
-      queryClient.invalidateQueries({ queryKey: pftKeys.session(userId) });
+      await savePftSession(userId, testType, updatedData, classCode, false);
+      queryClient.invalidateQueries({ queryKey: pftKeys.session(userId, classCode ?? '') });
     } catch (error) {
       dispatch({
         type: 'show-error',
@@ -275,9 +286,9 @@ export default function PhysicalActivityReadinessQuestionnaire() {
     updateField(keyName, value);
   };
 
-  if (pftLoading || isFetching || !userId || userType === 'teacher') return <Loading />;
+  if (pftLoading || isFetching || classLoading || !userId || userType === 'teacher') return <Loading />;
 
-  if (pftError || !pftRecord) {
+  if (pftError) {
     return (
       <ErrorMessage
         title="We couldn't load your test record"

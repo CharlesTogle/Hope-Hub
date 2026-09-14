@@ -20,6 +20,10 @@ import ActiveAboutIcon from '@/assets/icons/activeIcons/ActiveAboutIcon.png';
 import ActiveProfileIcon from '@/assets/icons/activeIcons/ActiveProfileIcon.png';
 import { useMobile } from '@/hooks/useMobile';
 import '@/styles/sidebar.css';
+import { useQuery } from '@tanstack/react-query';
+import { useAuthStore } from '@/store/auth-store';
+import { classKeys } from '@/lib/query-keys';
+import { fetchStudentClassCode } from '@/queries/dashboard-queries';
 
 interface SidebarButton {
   text:
@@ -80,6 +84,14 @@ export default function Sidebar({
   const navigate = useNavigate();
   const isMobile = useMobile(1024);
   const [isWide, setIsWide] = useState(false);
+  const profile = useAuthStore((state) => state.profile);
+  const userId = profile?.uuid ?? '';
+  const { data: studentClassCode } = useQuery({
+    queryKey: classKeys.studentCode(userId),
+    queryFn: () => fetchStudentClassCode(userId),
+    enabled: profile?.user_type === 'student' && !!userId,
+  });
+  const restrictedForStudent = profile?.user_type === 'student' && studentClassCode === null;
 
   const active = sidebarButtons.findIndex((button) =>
     button.route === '/'
@@ -153,7 +165,9 @@ export default function Sidebar({
             <button
               type="button"
               onClick={() => handleClick(item.route)}
-              className="transition-all duration-500 flex items-center w-full relative"
+              disabled={restrictedForStudent && ['Lectures', 'Quizzes', 'Physical Fitness Test'].includes(item.text)}
+              title={restrictedForStudent && ['Lectures', 'Quizzes', 'Physical Fitness Test'].includes(item.text) ? 'Join a class from your Dashboard first' : undefined}
+              className="transition-all duration-500 flex items-center w-full relative disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div
                 className={`highlight opacity-0 ${
@@ -166,7 +180,9 @@ export default function Sidebar({
                 alt={`${item.text} Icon`}
               />
               <p className="relative z-1 text-base md:text-xs text-text-content text-wrap font-heading text-left border-white lg:w-[60%] lg:text-base">
-                {item.text}
+                {restrictedForStudent && ['Lectures', 'Quizzes', 'Physical Fitness Test'].includes(item.text)
+                  ? `${item.text} (Join class)`
+                  : item.text}
               </p>
             </button>
           </div>

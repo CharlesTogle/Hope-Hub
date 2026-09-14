@@ -26,6 +26,7 @@ import {
 } from '@/queries/dashboard-queries';
 import type { DashboardQuizRow } from '@/types/student';
 import { getUserFacingError } from '@/utilities/user-facing-errors';
+import { usePhysicalFitnessStore } from '@/store/physical-fitness-store';
 
 export default function StudentDashboard() {
   const { profile, logout } = useAuthStore();
@@ -40,6 +41,7 @@ export default function StudentDashboard() {
   const resetStudentDashboard = useUIStore((state) => state.resetStudentDashboard);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const clearPftSession = usePhysicalFitnessStore((state) => state.clearSessionData);
 
   const profilePictureFile = useProfilePicture(userID);
   const memoizedFile = useMemo(
@@ -50,46 +52,46 @@ export default function StudentDashboard() {
 
   useEffect(() => resetStudentDashboard, [resetStudentDashboard]);
 
+  // Membership is the access boundary for lecture, quiz, and PFT data.
+  const { data: classCode, isLoading: classCodeLoading } = useQuery({
+    queryKey: classKeys.studentCode(userID ?? ''),
+    queryFn: () => fetchStudentClassCode(userID ?? ''),
+    enabled: !!userID,
+  });
+
   // Lecture progress
   const { data: lectureProgressData, isLoading: lectureLoading } = useQuery({
     queryKey: lectureKeys.summary(userID ?? ''),
     queryFn: () => fetchLectureProgressSummary(userID ?? ''),
-    enabled: !!userID,
+    enabled: !!userID && !!classCode,
   });
 
   // Quiz count
   const { data: quizCount = 0 } = useQuery<number>({
     queryKey: [...quizKeys.all, 'count'],
     queryFn: fetchQuizCount,
-    enabled: !!userID,
+    enabled: !!userID && !!classCode,
   });
 
   // Quiz progress stats
   const { data: quizProgressStats, isLoading: quizStatsLoading } = useQuery({
     queryKey: [...quizKeys.all, 'progress-stats', userID ?? ''],
     queryFn: () => fetchStudentQuizProgressSummary(userID ?? '', quizCount),
-    enabled: !!userID && quizCount > 0,
+    enabled: !!userID && !!classCode && quizCount > 0,
   });
 
   // Quiz detail data for table
   const { data: quizData = [], isLoading: quizDataLoading } = useQuery<DashboardQuizRow[]>({
     queryKey: [...quizKeys.all, 'detail-data', userID ?? ''],
     queryFn: () => fetchStudentQuizRows(userID ?? '', quizCount),
-    enabled: !!userID && quizCount > 0,
-  });
-
-  // Class code
-  const { data: classCode } = useQuery({
-    queryKey: classKeys.studentCode(userID ?? ''),
-    queryFn: () => fetchStudentClassCode(userID ?? ''),
-    enabled: !!userID,
+    enabled: !!userID && !!classCode && quizCount > 0,
   });
 
   // PFT status
   const { data: pftData } = useQuery({
-    queryKey: pftKeys.status(userID ?? ''),
-    queryFn: () => fetchStudentPftStatus(userID ?? ''),
-    enabled: !!userID,
+    queryKey: pftKeys.status(userID ?? '', classCode ?? ''),
+    queryFn: () => fetchStudentPftStatus(userID ?? '', classCode ?? null),
+    enabled: !!userID && classCode !== undefined,
     staleTime: 0,
     refetchOnMount: 'always',
   });
@@ -98,6 +100,8 @@ export default function StudentDashboard() {
     mutationFn: (code: string) => joinStudentClass(userID ?? '', code),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: classKeys.studentCode(userID ?? '') });
+      queryClient.removeQueries({ queryKey: pftKeys.all });
+      clearPftSession();
       setTempClassCode('');
       setIsJoiningClass(false);
     },
@@ -111,6 +115,8 @@ export default function StudentDashboard() {
     onSuccess: () => {
       setConfirmingLeave(false);
       queryClient.invalidateQueries({ queryKey: classKeys.studentCode(userID ?? '') });
+      queryClient.removeQueries({ queryKey: pftKeys.all });
+      clearPftSession();
     },
     onError: (error) => toast.error(getUserFacingError(error, 'leave-class')),
   });
@@ -136,7 +142,7 @@ export default function StudentDashboard() {
     navigate('/auth/login', { replace: true });
   };
 
-  const isLoading = lectureLoading || quizStatsLoading || quizDataLoading;
+  const isLoading = classCodeLoading || lectureLoading || quizStatsLoading || quizDataLoading;
 
   if (!userID || isLoading) return <Loading />;
 
@@ -172,21 +178,33 @@ export default function StudentDashboard() {
             onClassLeave={handleLeaveClass}
             onClassJoinOpen={() => setIsJoiningClass(true)}
             confirmingLeave={confirmingLeave}
-          />
-          <div id="statistics" className="grid grid-cols-2 gap-5">
-            <div id="lectures">
-              <Statistics
-                progress={lectureProgressData ?? { completed: 0, incomplete: 0, pending: 0, total: 0 }}
-                type="Lectures"
-              />
+            />
+            <div id="statistics" className="grid grid-cols-2 gap-5">
+              <div id="lectures">
+                {classCode ? (
+                  <Statistics
+                    progress={lectureProgressData ?? { completed: 0, incomplete: 0, pending: 0, total: 0 }}
+                    type="Lectures"
+                  />
+                ) : (
+                  <p className='p-5 text-center font-content text-primary-blue'>
+                    Please Join a Class first before accessing lectures
+                  </p>
+                )}
+              </div>
+              <div id="quizzes">
+                {classCode ? (
+                  <Statistics
+                    progress={quizProgressStats ?? { completed: 0, incomplete: 0, pending: 0, total: 0 }}
+                    type="Quizzes"
+                  />
+                ) : (
+                  <p className='p-5 text-center font-content text-primary-blue'>
+                    Please Join a Class first before accessing quizzes
+                  </p>
+                )}
+              </div>
             </div>
-            <div id="quizzes">
-              <Statistics
-                progress={quizProgressStats ?? { completed: 0, incomplete: 0, pending: 0, total: 0 }}
-                type="Quizzes"
-              />
-            </div>
-          </div>
           <div id="quiz-scores" className="w-full text-center">
             <QuizScoreTable quizData={quizData} />
           </div>

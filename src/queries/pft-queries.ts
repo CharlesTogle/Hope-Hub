@@ -28,12 +28,22 @@ interface PFTProfileRow {
 
 export async function fetchPftRecord(
   userId: string,
+  classCode: string | null = null,
+  isTeacher = false,
 ): Promise<PFTRecordRow | null> {
-  const { data, error } = await supabase
-    .from('physical_fitness_test')
-    .select('pre_physical_fitness_test, post_physical_fitness_test')
-    .eq('uuid', userId)
-    .maybeSingle();
+  if (!isTeacher && !classCode) return null;
+  const { data, error } = isTeacher
+    ? await supabase
+        .from('physical_fitness_test')
+        .select('pre_physical_fitness_test, post_physical_fitness_test')
+        .eq('uuid', userId)
+        .maybeSingle()
+    : await supabase
+        .from('class_physical_fitness_test')
+        .select('pre_physical_fitness_test, post_physical_fitness_test')
+        .eq('uuid', userId)
+        .eq('class_code', classCode!)
+        .maybeSingle();
 
   if (error) {
     logger.error('fetchPftRecord failed', error, { userId });
@@ -43,16 +53,22 @@ export async function fetchPftRecord(
   return data as PFTRecordRow;
 }
 
-export async function fetchPftStatus(userId: string): Promise<PFTStatus> {
-  return derivePftStatus(await fetchPftRecord(userId));
+export async function fetchPftStatus(
+  userId: string,
+  classCode: string | null = null,
+  isTeacher = false,
+): Promise<PFTStatus> {
+  return derivePftStatus(await fetchPftRecord(userId, classCode, isTeacher));
 }
 
 export async function fetchPftSummaryForViewer(
   studentId: string,
+  classCode: string,
   testType: PFTSummaryRouteType,
 ): Promise<PFTSummaryRow | null> {
   const { data, error } = await supabase.rpc('get_pft_summary_for_viewer', {
     p_student_uuid: studentId,
+    p_class_code: classCode,
     p_test_type: testType,
   });
 
@@ -64,17 +80,17 @@ export async function fetchPftSummaryForViewer(
     throw error;
   }
 
-  const [{ data: profile, error: profileError }, { data: pftRecord, error: pftError }] =
-    await Promise.all([
+  const [{ data: profile, error: profileError }, { data: pftRecord, error: pftError }] = await Promise.all([
       supabase
         .from('profile')
         .select('full_name, email')
         .eq('uuid', studentId)
         .maybeSingle<PFTProfileRow>(),
       supabase
-        .from('physical_fitness_test')
+        .from('class_physical_fitness_test')
         .select('pre_physical_fitness_test, post_physical_fitness_test')
         .eq('uuid', studentId)
+        .eq('class_code', classCode)
         .maybeSingle<PFTRecordRow>(),
     ]);
 
