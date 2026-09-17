@@ -9,6 +9,7 @@ export interface WorkoutVideo {
   url: string;
   duration: string;
   title: string;
+  musclesUsed?: string;
   description: VideoDescription;
   videoLink: string;
   uploadDate: string;

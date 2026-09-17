@@ -25,10 +25,18 @@ export default function VideoPlayer({ video }: VideoPlayerProps) {
             {video.title}
           </h2>
           <hr className='w-1/3 border-1 border-primary-yellow mt-2 mb-4' />
-          <div className='mb-3'>
-            <p className='text-lg font-medium'>How to do it</p>
-            {video.description.howToDoIt}
-          </div>
+          {video.musclesUsed && (
+            <div className='mb-3'>
+              <p className='text-lg font-medium'>Muscles Used</p>
+              <span className='whitespace-pre-line'>{video.musclesUsed}</span>
+            </div>
+          )}
+          {video.description.howToDoIt && (
+            <div className='mb-3'>
+              <p className='text-lg font-medium'>How to do it</p>
+              {video.description.howToDoIt}
+            </div>
+          )}
           {video.description.do && video.description.do.length > 0 && (
             <div>
               <p className='font-semibold text-green-600 mb-2'>Do's</p>

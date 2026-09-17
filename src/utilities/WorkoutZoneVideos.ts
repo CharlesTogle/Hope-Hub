@@ -8,8 +8,7 @@ export const WarmUpVideo: WorkoutVideo[] = [
     duration: '02:17',
     title: 'Warm Up',
     description: {
-      howToDoIt:
-        'Sit or stand up straight with a weight in each hand at shoulder height. Push the weights straight up until your arms are straight, then lower them slowly back down.',
+      howToDoIt: '',
       do: [],
       dont: [],
     },
@@ -25,6 +24,7 @@ export const UpperBodyVideos: WorkoutVideo[] = [
     url: 'shoulder-press',
     duration: '00:44',
     title: 'Shoulder Press',
+    musclesUsed: 'Shoulders (deltoids), arms (triceps)',
     description: {
       howToDoIt:
         'Sit or stand up straight with a weight in each hand at shoulder height. Push the weights straight up until your arms are straight, then lower them slowly back down.',
@@ -40,9 +40,11 @@ export const UpperBodyVideos: WorkoutVideo[] = [
     url: 'incline-chest-press',
     duration: '00:56',
     title: 'Incline Chest Press',
+    musclesUsed:
+      'Primary: Upper chest (pectoralis major – clavicular head)\nSecondary: Anterior deltoids (front shoulders), triceps brachii',
     description: {
       howToDoIt:
-        'Sit or stand up straight with a weight in each hand at shoulder height. Push the weights straight up until your arms are straight, then lower them slowly back down.',
+        'Sit on the incline chest press machine and adjust the seat height so that the handles are at chest level. Place your feet flat on the floor and rest your back fully against the back pad. Grip the handles firmly with both hands, elbows bent at a 90-degree angle. Push the handles upward until your arms are almost fully extended (don’t lock elbows). Slowly return to the starting position with control.',
       do: [
         'Adjust the seat so that the handles are aligned with your upper chest.',
         'Keep your back and head supported against the pad.',
@@ -63,9 +65,11 @@ export const UpperBodyVideos: WorkoutVideo[] = [
     url: 'standing-dumbell-overhead',
     duration: '00:51',
     title: 'Standing Dumbbell Overhead Press',
+    musclesUsed:
+      'Primary: Deltoids (shoulders)\nSecondary: Triceps, upper trapezius, core (stabilizers)',
     description: {
       howToDoIt:
-        'Sit or stand up straight with a weight in each hand at shoulder height. Push the weights straight up until your arms are straight, then lower them slowly back down.',
+        'Stand with feet shoulder-width apart, holding a dumbbell in each hand at shoulder height. Keep your core engaged and back straight. Press the dumbbells straight overhead until your arms are fully extended (but not locked). Lower the dumbbells slowly back to shoulder height. Repeat for the desired reps.',
       do: [
         'Keep a neutral spine and brace your core.',
         'Maintain control throughout the movement.',
@@ -86,6 +90,7 @@ export const UpperBodyVideos: WorkoutVideo[] = [
     url: 'close-grip-lat-pulldown',
     duration: '00:49',
     title: 'Close Grip Lat Pulldown',
+    musclesUsed: 'Upper back, biceps',
     description: {
       howToDoIt:
         'Sit at the lat pulldown machine. Pull the bar down to your chest, then let it go back up slowly.',
@@ -101,6 +106,7 @@ export const UpperBodyVideos: WorkoutVideo[] = [
     url: 'triceps-pulldown',
     duration: '00:33',
     title: 'Triceps Pushdown',
+    musclesUsed: 'Triceps (back of upper arms)',
     description: {
       howToDoIt:
         'Stand at a cable machine with a bar or rope. Push it down until your arms are straight, then let it come back up slowly.',
@@ -119,6 +125,7 @@ export const UpperBodyVideos: WorkoutVideo[] = [
     url: 'bicep-curl',
     duration: '00:40',
     title: 'Bicep Curl',
+    musclesUsed: 'Biceps (front of upper arms)',
     description: {
       howToDoIt:
         'Hold a dumbbell in each hand, arms at your sides. Curl the weights up to your shoulders. Lower slowly.',
@@ -137,6 +144,7 @@ export const LowerBodyVideos: WorkoutVideo[] = [
     url: 'deadlift',
     duration: '01:08',
     title: 'Deadlifts',
+    musclesUsed: 'Hamstrings, glutes, lower back, core',
     description: {
       howToDoIt:
         'Stand with feet hip-width apart and a barbell (or dumbbells) in front of you. Hinge at the hips and slightly bend your knees to grip the weight. Keep your back flat and chest up. Drive through your heels to lift the weight, extending your hips and knees fully. Lower it back down with control by hinging at the hips again.',
@@ -160,6 +168,7 @@ export const LowerBodyVideos: WorkoutVideo[] = [
     url: 'squats',
     duration: '00:43',
     title: 'Squats',
+    musclesUsed: 'Quadriceps, hamstrings, glutes, core',
     description: {
       howToDoIt:
         'Stand with feet shoulder-width apart and toes slightly turned out. Keep your chest lifted and back straight. Bend your hips and knees to lower your body as if sitting in a chair. Go as low as you can while keeping heels on the ground. Push through your heels to return to standing.',
@@ -183,9 +192,10 @@ export const LowerBodyVideos: WorkoutVideo[] = [
     url: 'split-squats',
     duration: '00:48',
     title: 'Split Squats',
+    musclesUsed: 'Quadriceps\nGlutes\nHamstrings\nCalves (stabilizers)',
     description: {
       howToDoIt:
-        'Stand with one foot forward and the other behind you in a split stance. Lower your back knee toward the ground while keeping your torso upright. Push through the front heel to return to the starting position.',
+        'Stand with one foot forward and the other behind you, in a split stance. Lower your back knee toward the ground while keeping your torso upright. Your front knee should form a 90-degree angle. Push through the front heel to return to the starting position. Repeat on the other leg. You can do this bodyweight or hold dumbbells for added resistance.',
       do: [
         'Keep your chest up and back straight.',
         'Ensure your front knee tracks over your ankle.',
