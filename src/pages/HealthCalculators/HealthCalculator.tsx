@@ -1,6 +1,4 @@
-import PageHeading from '@/components/PageHeading';
 import HealthCalculatorButton from '@/components/health-calculators/HealthCalculatorButtons';
-import Footer from '@/components/Footer';
 
 export default function HealthCalculator () {
   const description =
@@ -40,9 +38,8 @@ export default function HealthCalculator () {
   ];
 
   return (
-    <div id='health-calculator' className='parent-container'>
-      <PageHeading text='Fitness & Health Calculators' />
-      <div id='health-calculators-content' className='content-container'>
+    <div id='health-calculator' className='w-full'>
+      <div id='health-calculators-content'>
         <div className='relative mb-10 w-full'>
           <div className='grid lg:grid-cols-2 md:grid-cols-2 sm:grid-cols-1 md:gap-y-1 lg:px-0 gap-y-1 gap-x-10'>
             {HealthCalculatorButtons.map((button, index) => (
@@ -59,13 +56,12 @@ export default function HealthCalculator () {
           Description:
         </h1>
         <hr className='border-1 w-25 border-primary-yellow yellow self-start mt-1 mb-7'></hr>
-        <p className='font-content text-justify ml-10 mb-10'>
+        <div className='font-content text-justify ml-10 mb-10'>
           {description.split('\n').map((line) => (
             <p key={line}>{line}</p>
           ))}
-        </p>
+        </div>
       </div>
-      <Footer></Footer>
     </div>
   );
 }

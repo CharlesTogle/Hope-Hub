@@ -134,7 +134,7 @@ export default function Sidebar({
       id="sidebar"
       className={`${
         isMobile ? '' : 'aside '
-      } lg:w-[7vw] w-[60vw] md:w-[30vw] h-screen overflow-hidden bg-secondary-dark-blue lg:relative
+      } lg:w-20 w-[60vw] md:w-[30vw] h-screen overflow-hidden bg-secondary-dark-blue lg:relative
       border-r-secondary-dark-blue lg:flex flex-col items-center absolute z-999
       transition-all duration-400
       ${isMobile ? (isOpen ? 'translate-x-0' : '-translate-x-full w-0!') : ''}`}

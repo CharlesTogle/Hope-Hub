@@ -1,6 +1,7 @@
 import bannerHome from '@/assets/banner_home.svg';
 import HomePageHero from '@/assets/images/gym_homepage.png';
 import HopeHubPicture from '@/assets/images/home-pic.png';
+import SafetyFirstBanner from '@/assets/images/safety-first-banner.png';
 import Footer from '@/components/Footer';
 import { useNavigate } from 'react-router-dom';
 
@@ -53,6 +54,13 @@ export default function Home() {
             </button>
           </div>
         </div>
+      </section>
+      <section className='w-full flex justify-center px-3 mb-10 lg:mb-20'>
+        <img
+          src={SafetyFirstBanner}
+          alt='Safety first: warm up, use proper form, stay hydrated, know your limits, and listen to your body.'
+          className='w-full max-w-7xl rounded-2xl'
+        />
       </section>
       <section className='w-full flex justify-center flex-col items-center pb-10'>
         <iframe

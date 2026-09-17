@@ -222,7 +222,7 @@ export default function StudentDashboard() {
               >
                 <div className='absolute -right-12 -top-14 h-44 w-44 rounded-full border-[18px] border-primary-yellow/20' />
                 <div className='relative max-w-2xl'>
-                  <p className='mb-3 font-heading text-sm tracking-[0.2em] text-primary-yellow'>
+                  <p className='mb-3 text-sm font-semibold tracking-wide text-primary-yellow'>
                     YOUR NEXT STEP
                   </p>
                   <h2 id='class-access-heading' className='font-heading text-3xl text-secondary-dark-blue lg:text-4xl'>
@@ -234,7 +234,7 @@ export default function StudentDashboard() {
                   <button
                     type='button'
                     onClick={() => setIsJoiningClass(true)}
-                    className='mt-7 inline-flex items-center gap-3 rounded-sm bg-[#DB4E34] px-5 py-3 font-semibold text-white transition hover:brightness-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DB4E34]'
+                    className='mt-7 inline-flex items-center gap-3 rounded-sm bg-[#DB4E34] px-5 py-3 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#DB4E34]'
                   >
                     Join a Class <ArrowRight size={18} aria-hidden='true' />
                   </button>
@@ -242,17 +242,17 @@ export default function StudentDashboard() {
                 <div className='relative mt-10 grid gap-3 border-t border-primary-blue/10 pt-6 md:grid-cols-3'>
                   <div className='border-l-2 border-primary-yellow bg-gray-background p-4'>
                     <BookOpen className='mb-5 text-primary-blue' aria-hidden='true' />
-                    <h3 className='font-heading text-lg text-secondary-dark-blue'>Lectures</h3>
+                    <h3 className='text-base font-semibold text-secondary-dark-blue'>Lectures</h3>
                     <p className='mt-2 text-xs leading-5 text-neutral-dark-blue'>Please Join a Class first before accessing lectures</p>
                   </div>
                   <div className='border-l-2 border-primary-yellow bg-gray-background p-4'>
                     <ClipboardList className='mb-5 text-primary-blue' aria-hidden='true' />
-                    <h3 className='font-heading text-lg text-secondary-dark-blue'>Quizzes</h3>
+                    <h3 className='text-base font-semibold text-secondary-dark-blue'>Quizzes</h3>
                     <p className='mt-2 text-xs leading-5 text-neutral-dark-blue'>Please Join a Class first before accessing quizzes</p>
                   </div>
                   <div className='border-l-2 border-primary-yellow bg-gray-background p-4'>
                     <Dumbbell className='mb-5 text-primary-blue' aria-hidden='true' />
-                    <h3 className='font-heading text-lg text-secondary-dark-blue'>PFT</h3>
+                    <h3 className='text-base font-semibold text-secondary-dark-blue'>PFT</h3>
                     <p className='mt-2 text-xs leading-5 text-neutral-dark-blue'>Your physical fitness test becomes available after you join.</p>
                   </div>
                 </div>
